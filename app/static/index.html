@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calc Animator MVP</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="panel hero">
+        <p class="eyebrow">Teacher-Facing Calculus Visualization</p>
+        <h1>Turn a classroom prompt into a short math animation.</h1>
+        <p class="lede">
+          Enter a prompt like “show why the derivative of x^2 is 2x” or
+          “visualize a Riemann sum approaching the integral.”
+        </p>
+      </section>
+
+      <section class="panel">
+        <form id="generate-form" class="prompt-form">
+          <label for="prompt" class="field-label">Visualization request</label>
+          <textarea
+            id="prompt"
+            name="prompt"
+            rows="7"
+            maxlength="600"
+            placeholder="Describe the calculus concept you want to visualize."
+            required
+          ></textarea>
+          <div class="actions">
+            <button id="submit-button" type="submit">Generate animation</button>
+            <span id="status-text" class="status-text" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section id="error-panel" class="panel hidden error-panel" aria-live="assertive"></section>
+
+      <section id="result-panel" class="panel hidden">
+        <div class="result-header">
+          <div>
+            <p class="eyebrow">Latest Render</p>
+            <h2>Your preview is ready</h2>
+          </div>
+          <a id="download-link" class="download-link" href="#" download>Download MP4</a>
+        </div>
+
+        <video id="video-preview" controls playsinline></video>
+
+        <details class="code-details">
+          <summary>Show generated Manim code</summary>
+          <pre id="code-output"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

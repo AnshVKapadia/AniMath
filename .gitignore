@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.pycache_tmp/
+.env
+.venv/
+renders/*
+!renders/.gitkeep
