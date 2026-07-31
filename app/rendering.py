@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -40,6 +41,8 @@ class RenderResult:
     code: str
     repaired: bool
     video_path: Path
+    initial_video_path: Path | None = None
+    final_video_path: Path | None = None
 
 
 def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
@@ -89,7 +92,14 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
     )
     if success and video_path:
         _log(job_id, "done", f"Pipeline finished in {_elapsed(total_start)}")
-        return RenderResult(job_id=job_id, code=code, repaired=False, video_path=video_path)
+        return RenderResult(
+            job_id=job_id,
+            code=code,
+            repaired=False,
+            video_path=video_path,
+            initial_video_path=video_path,
+            final_video_path=video_path,
+        )
 
     _log(job_id, "repair", "Initial render failed; requesting one repair pass")
     repair_start = perf_counter()
@@ -111,6 +121,8 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
             code=repaired_code,
             repaired=True,
             video_path=repaired_video,
+            initial_video_path=video_path,
+            final_video_path=repaired_video,
         )
 
     _log(job_id, "error", f"Pipeline failed in {_elapsed(total_start)} after repair")
@@ -149,7 +161,7 @@ def _render_scene(
 ) -> tuple[bool, str, Path | None]:
     settings = get_settings()
     command = [
-        "python",
+        sys.executable,
         "-m",
         "manim",
         settings.render_quality_flag,

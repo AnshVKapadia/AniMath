@@ -161,11 +161,23 @@ button:disabled {
   align-items: center;
 }
 
-#video-preview {
-  width: 100%;
+.render-grid {
+  display: grid;
+  gap: 20px;
   margin-top: 20px;
+}
+
+.render-card h3 {
+  margin: 8px 0 0;
+  font-size: 1.2rem;
+}
+
+#video-preview,
+#initial-video-preview {
+  width: 100%;
   border-radius: 20px;
   background: #0f172a;
+  margin-top: 16px;
 }
 
 .code-details {

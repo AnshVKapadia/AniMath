@@ -5,6 +5,8 @@ const statusText = document.getElementById("status-text");
 const resultPanel = document.getElementById("result-panel");
 const errorPanel = document.getElementById("error-panel");
 const videoPreview = document.getElementById("video-preview");
+const initialRenderCard = document.getElementById("initial-render-card");
+const initialVideoPreview = document.getElementById("initial-video-preview");
 const codeOutput = document.getElementById("code-output");
 const downloadLink = document.getElementById("download-link");
 
@@ -61,6 +63,14 @@ form.addEventListener("submit", async (event) => {
     videoPreview.load();
     downloadLink.href = payload.videoUrl;
     codeOutput.textContent = payload.code;
+    if (payload.initialVideoUrl && payload.finalVideoUrl && payload.initialVideoUrl !== payload.finalVideoUrl) {
+      initialVideoPreview.src = payload.initialVideoUrl;
+      initialVideoPreview.load();
+      initialRenderCard.classList.remove("hidden");
+    } else {
+      initialVideoPreview.removeAttribute("src");
+      initialRenderCard.classList.add("hidden");
+    }
     resultPanel.classList.remove("hidden");
     statusText.textContent = payload.repaired
       ? "Rendered after one automatic repair pass."

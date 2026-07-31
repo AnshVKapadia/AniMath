@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Calc Animator MVP</title>
+    <title>AniMath - Math Animation Tool</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <main class="page-shell">
       <section class="panel hero">
         <p class="eyebrow">Teacher-Facing Calculus Visualization</p>
-        <h1>Turn a classroom prompt into a short math animation.</h1>
+        <h1>AniMath - Math Animation Tool</h1>
         <p class="lede">
           Enter a prompt like “show why the derivative of x^2 is 2x” or
           “visualize a Riemann sum approaching the integral.”
@@ -46,7 +46,19 @@
           <a id="download-link" class="download-link" href="#" download>Download MP4</a>
         </div>
 
-        <video id="video-preview" controls playsinline></video>
+        <div class="render-grid">
+          <section class="render-card hidden" id="initial-render-card">
+            <p class="eyebrow">Initial Render</p>
+            <h3>Risky-layout version</h3>
+            <video id="initial-video-preview" controls playsinline></video>
+          </section>
+
+          <section class="render-card" id="final-render-card">
+            <p class="eyebrow">Final Render</p>
+            <h3>Selected output</h3>
+            <video id="video-preview" controls playsinline></video>
+          </section>
+        </div>
 
         <details class="code-details">
           <summary>Show generated Manim code</summary>

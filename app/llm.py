@@ -56,11 +56,27 @@ REPAIR_PROMPT = dedent(
 class LLMClient:
     def __init__(self) -> None:
         settings = get_settings()
-        if not settings.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is not set.")
-
-        self._client = OpenAI(api_key=settings.openai_api_key)
-        self._model = settings.openai_model
+        foundry_values = (
+            settings.azure_openai_api_key,
+            settings.azure_openai_base_url,
+            settings.azure_openai_deployment,
+        )
+        if any(foundry_values):
+            if not all(foundry_values):
+                raise ValueError(
+                    "AZURE_OPENAI_API_KEY, AZURE_OPENAI_BASE_URL, and "
+                    "AZURE_OPENAI_DEPLOYMENT must all be set."
+                )
+            self._client = OpenAI(
+                api_key=settings.azure_openai_api_key,
+                base_url=_foundry_base_url(settings.azure_openai_base_url),
+            )
+            self._model = settings.azure_openai_deployment
+        else:
+            if not settings.openai_api_key:
+                raise ValueError("Foundry or OpenAI API configuration is not set.")
+            self._client = OpenAI(api_key=settings.openai_api_key)
+            self._model = settings.openai_model
 
     def generate_code(self, teacher_prompt: str) -> str:
         prompt = dedent(
@@ -102,3 +118,12 @@ class LLMClient:
         if not text:
             raise ValueError("The model returned an empty response.")
         return text
+
+
+def _foundry_base_url(value: str) -> str:
+    base_url = value.strip().rstrip("/")
+    if base_url.endswith("/responses"):
+        base_url = base_url[: -len("/responses")]
+    if not base_url.endswith("/openai/v1"):
+        base_url = f"{base_url}/openai/v1"
+    return f"{base_url}/"
