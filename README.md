@@ -15,7 +15,7 @@ After installing the [Manim system prerequisites](https://docs.manim.community/e
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 Copy-Item .env.example .env
 ```
 
@@ -73,7 +73,7 @@ python -m venv .venv
 ### 3. Install Python dependencies
 
 ```powershell
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 ```
 
 ### 4. Configure environment variables
@@ -180,20 +180,26 @@ Failure response:
 }
 ```
 
-## Deployment recommendation
+## Vercel deployment
 
-For v1, deploy this as a single Python service on a host that supports Manim system dependencies:
+The production branch is configured for Vercel. The FastAPI function handles the
+UI and Foundry/OpenAI calls, while Manim runs in an isolated Vercel Sandbox created
+from a prebuilt runtime snapshot.
 
-- best fit: Render or Railway with Docker or a Python service that includes FFmpeg and Cairo/Pango dependencies
-- not recommended for rendering: Vercel, because Manim rendering depends on heavier system packages and local video output
+Required production variables:
 
-If you later want Vercel for the frontend, keep rendering on a separate Python backend.
+- the Foundry/OpenAI variables listed above
+- `VERCEL_SANDBOX_SNAPSHOT_ID`
+
+The root `requirements.txt` is intentionally serverless-only. Use
+`requirements-local.txt` for local Manim development and
+`requirements-gemini.txt` for the optional Gemini variant.
 
 ## Known limitations
 
 - No auth, queue, persistence layer, or object storage
 - Render jobs run synchronously in the request cycle
-- Output files are stored on local disk only
+- Rendered videos are returned inline on Vercel and stored locally during development
 - The controlled compiler currently supports graph, point, secant, tangent,
   sliding-secant, area, Riemann-rectangle, and equation-transformation scenes
 - Unsupported or invalid plans fall back to free-form generation

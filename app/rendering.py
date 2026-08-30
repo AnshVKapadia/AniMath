@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 
-from app.config import RENDERS_DIR, get_settings
+from app.config import IS_VERCEL, RENDERS_DIR, get_settings
 from app.llm import LLMClient
 from app.scene_compiler import compile_scene
 
@@ -202,6 +202,17 @@ def _render_scene(
     media_dir: Path,
     job_id: str | None = None,
 ) -> tuple[bool, str, Path | None]:
+    if IS_VERCEL:
+        from app.sandbox_rendering import render_scene_in_sandbox
+
+        if job_id:
+            _log(job_id, "render", "Starting Manim render in Vercel Sandbox")
+        render_start = perf_counter()
+        result = render_scene_in_sandbox(scene_path, media_dir)
+        if job_id:
+            _log(job_id, "render", f"Sandbox render finished in {_elapsed(render_start)}")
+        return result
+
     settings = get_settings()
     command = [
         sys.executable,
