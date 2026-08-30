@@ -1,0 +1,8 @@
+.env
+.git
+.venv
+renders
+scripts
+tests
+__pycache__
+*.log

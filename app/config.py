@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 
@@ -9,7 +10,10 @@ from pydantic import BaseModel
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-RENDERS_DIR = BASE_DIR / "renders"
+IS_VERCEL = bool(os.getenv("VERCEL"))
+RENDERS_DIR = (
+    Path(tempfile.gettempdir()) / "animath-renders" if IS_VERCEL else BASE_DIR / "renders"
+)
 STATIC_DIR = BASE_DIR / "app" / "static"
 
 load_dotenv(BASE_DIR / ".env")
