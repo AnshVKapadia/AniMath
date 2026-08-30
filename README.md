@@ -1,25 +1,24 @@
 # MathimateLM
 
-Minimal tutor-facing calculus visualization tool:
+MathimateLM is a tutor-facing math animation tool, currently optimized for
+calculus explanations. A tutor enters a natural-language prompt, and the app
+plans, compiles, renders, previews, and downloads a short Manim video.
 
-- tutor enters a natural-language calculus prompt
-- backend asks Foundry/OpenAI for a constrained scene plan
-- a deterministic compiler turns the plan into frame-safe Manim code
-- backend renders an MP4 with Manim
-- tutor previews and downloads the result for use in a lesson
+Production: [https://mathimatelm.vercel.app](https://mathimatelm.vercel.app)
 
 ## Run locally
 
-After installing the [Manim system prerequisites](https://docs.manim.community/en/stable/installation.html), run:
+Install the [Manim system prerequisites](https://docs.manim.community/en/stable/installation.html),
+then run:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install -r requirements-local.txt
+python -m pip install -r requirements-local.txt
 Copy-Item .env.example .env
 ```
 
-Add your Foundry/OpenAI credentials to `.env`, then start the app:
+Add Foundry or OpenAI credentials to `.env`, then start the app:
 
 ```powershell
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload --reload-dir app
@@ -27,127 +26,89 @@ Add your Foundry/OpenAI credentials to `.env`, then start the app:
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+## How generation works
+
+1. Foundry/OpenAI converts the tutor prompt into a constrained JSON scene plan.
+2. Pydantic validates the plan, actions, axis ranges, and required parameters.
+3. Mathematical caret powers such as `x^2` are normalized to safe Python powers
+   such as `x**2` before compilation.
+4. The controlled compiler validates function syntax and generates frame-safe
+   Manim code with fixed title, visual, and explanation regions.
+5. A compiler-rejected plan receives one structured correction attempt before
+   the pipeline considers free-form generation.
+6. Manim renders locally during development or inside an isolated Vercel Sandbox
+   in production.
+7. If a controlled render fails, the pipeline tries free-form generation and one
+   repair pass as a final fallback.
+
+This keeps normal requests on a consistent, deterministic visual layout while
+retaining a fallback for concepts outside the controlled compiler.
+
 ## Architecture
 
-This MVP uses one Python service:
+- `FastAPI` serves the UI and `POST /api/generate`.
+- Plain HTML, CSS, and JavaScript provide the single-page tutor interface.
+- Foundry/OpenAI produces semantic teaching beats rather than screen coordinates.
+- The controlled compiler owns layout, sizing, transitions, and collision checks.
+- Local development runs Manim directly and stores artifacts under `renders/`.
+- Vercel runs FastAPI as a Fluid compute function and starts a temporary Sandbox
+  from a prebuilt Manim runtime snapshot for each render.
+- Production returns the MP4 as an inline `data:video/mp4;base64,...` URL, so no
+  persistent filesystem or object-storage service is required for the current MVP.
 
-- `FastAPI` serves the tutor UI and the API
-- plain HTML/CSS/JS keeps the frontend lightweight
-- Foundry/OpenAI plans semantic animation beats as validated JSON
-- a controlled compiler owns coordinates, sizing, and transitions
-- free-form generation remains available as a render fallback
-- Manim renders videos into the local `renders/` directory
+## Configuration
 
-This keeps the project easy to run locally and simple to deploy on a Python host.
-
-## Files
-
-- `app/main.py`: FastAPI routes and static file mounting
-- `app/llm.py`: Foundry/OpenAI prompts and response handling
-- `app/scene_plan.py`: constrained scene-plan schema and validation
-- `app/scene_compiler.py`: deterministic layouts and runtime collision checks
-- `app/rendering.py`: plan, compile, render, fallback, and repair orchestration
-- `app/schemas.py`: request and response models
-- `app/static/`: one-page frontend
-- `renders/`: generated code and videos
-
-## Setup
-
-### 1. Install system prerequisites for Manim
-
-Manim needs additional system packages. Follow the official Manim installation guide for your OS before installing Python dependencies:
-
-- Windows: install the required C++ build tools and FFmpeg
-- macOS: install FFmpeg and Cairo/Pango dependencies
-- Linux: install FFmpeg, Cairo, Pango, and related development packages
-
-If `python -m manim --version` fails, finish the Manim prerequisite setup first.
-
-### 2. Create a virtual environment
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-### 3. Install Python dependencies
-
-```powershell
-pip install -r requirements-local.txt
-```
-
-### 4. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your Foundry deployment details:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Recommended variables:
+Recommended Foundry variables:
 
 - `AZURE_OPENAI_API_KEY`
 - `AZURE_OPENAI_BASE_URL`
 - `AZURE_OPENAI_DEPLOYMENT`
 
-Optional variables:
+Direct OpenAI fallback:
 
-- `OPENAI_API_KEY` and `OPENAI_MODEL` provide a direct OpenAI fallback when
-  Foundry variables are empty
-- `OPENAI_MODEL` default: `gpt-5-mini`
-- `APP_NAME` default: `MathimateLM`
-- `MAX_PROMPT_LENGTH` default: `600`
-- `MANIM_QUALITY_FLAG` default: `-ql`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`, default `gpt-5-mini`
 
-### Gemini version
+Application settings:
 
-The OpenAI-backed app is unchanged. A separate Gemini-backed version is also included.
+- `APP_NAME`, default `MathimateLM`
+- `MAX_PROMPT_LENGTH`, default `600`
+- `MANIM_QUALITY_FLAG`, default `-ql`; accepted values are `-ql`, `-qm`, and `-qh`
+- `VERCEL_INLINE_VIDEO_MAX_BYTES`, default `2750000`
 
-Files:
+Production additionally requires:
 
-- `app/main_gemini.py`: Gemini FastAPI entrypoint
-- `app/gemini_llm.py`: Gemini API integration
-- `app/rendering_gemini.py`: Gemini render pipeline
+- `VERCEL_SANDBOX_SNAPSHOT_ID`: ID of the prebuilt Sandbox snapshot containing
+  Docker and the `manimcommunity/manim:v0.19.0` image
 
-Copy `.env.gemini.example` to `.env` if you want to run the Gemini variant:
+Vercel supplies Sandbox authentication through its deployment environment. Never
+commit Foundry/OpenAI keys, `.env`, `.env.local`, or `.vercel/`.
 
-```powershell
-Copy-Item .env.gemini.example .env
-```
+## Dependency files
 
-Then set:
+- `requirements.txt`: serverless FastAPI, Foundry/OpenAI, and Vercel Sandbox SDK
+- `requirements-local.txt`: serverless dependencies plus Manim and Uvicorn
+- `requirements-gemini.txt`: local dependencies plus the optional Gemini SDK
 
-- `GEMINI_API_KEY`
-- optional `GEMINI_MODEL` default: `gemini-2.5-flash`
+Manim is intentionally absent from the root `requirements.txt`. Its native
+Cairo/Pango and LaTeX dependencies do not belong in the Vercel function bundle;
+production rendering happens in the Sandbox runtime instead.
 
-This project’s Gemini variant defaults to `gemini-2.5-flash` because Google’s official Gemini Developer API pricing/docs currently show it on the free tier. Source: [Gemini Developer API pricing](https://ai.google.dev/pricing), [Gemini API quickstart](https://ai.google.dev/gemini-api/docs/quickstart), [Gemini text generation docs](https://ai.google.dev/gemini-api/docs/text-generation).
+## Vercel deployment
 
-## Tutor examples and alternatives
+- Vercel project: `mathimatelm`
+- Production URL: [https://mathimatelm.vercel.app](https://mathimatelm.vercel.app)
+- Production branch: `codex/vercel-deployment`
+- FastAPI entrypoint: `index.py`
+- Function timeout: 300 seconds, configured in `vercel.json`
 
-To run the Gemini version instead:
+Pushing the production branch triggers a Git-connected deployment. The FastAPI
+function performs planning and compilation, sends only the generated scene source
+to the Sandbox, runs Manim there, downloads the MP4, and destroys the temporary
+Sandbox.
 
-```powershell
-uvicorn app.main_gemini:app --reload
-```
-
-Try prompts like:
-
-- `show why the derivative of x^2 is 2x`
-- `visualize a Riemann sum approaching the integral`
-- `animate a tangent line moving along y=x^2`
-- `illustrate a geometric series converging`
-
-Run the focused tests with:
-
-```powershell
-.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
-Run the representative live benchmark with:
-
-```powershell
-.venv\Scripts\python.exe -m scripts.benchmark_pipeline
-```
+Docker Desktop is not required to deploy or render on Vercel. It is only relevant
+if a developer chooses to run a separate local container workflow.
 
 ## API
 
@@ -156,7 +117,9 @@ Run the representative live benchmark with:
 Request:
 
 ```json
-{ "prompt": "Show why the derivative of x^2 is 2x" }
+{
+  "prompt": "show why the derivative of x^2 is 2x using the definition of the derivative"
+}
 ```
 
 Success response:
@@ -164,44 +127,79 @@ Success response:
 ```json
 {
   "jobId": "uuid",
-  "videoUrl": "/renders/<job_id>/media/videos/scene/480p15/GeneratedScene.mp4",
-  "code": "...generated manim code...",
-  "repaired": false
+  "videoUrl": "data:video/mp4;base64,...",
+  "code": "...generated Manim code...",
+  "repaired": false,
+  "initialVideoUrl": null,
+  "finalVideoUrl": null
 }
 ```
 
-Failure response:
+On Vercel, `videoUrl` is an inline data URL and the two intermediate video URLs
+are `null`. Locally, `videoUrl` and available intermediate URLs use paths under
+`/renders/<job_id>/...`.
+
+Failure response after the final repair attempt:
 
 ```json
 {
   "jobId": "uuid",
   "error": "Render failed after one repair attempt.",
-  "details": "...final stderr..."
+  "details": "...final render output..."
 }
 ```
 
-## Vercel deployment
+## Main files
 
-The production branch is configured for Vercel. The FastAPI function handles the
-UI and Foundry/OpenAI calls, while Manim runs in an isolated Vercel Sandbox created
-from a prebuilt runtime snapshot.
+- `index.py`: root Vercel FastAPI entrypoint
+- `app/main.py`: routes, static mounting, and production video responses
+- `app/llm.py`: Foundry/OpenAI prompts, planning, correction, and repair calls
+- `app/scene_plan.py`: constrained plan schema and normalization
+- `app/scene_compiler.py`: safe expression compiler and controlled layouts
+- `app/rendering.py`: planning, compilation, fallback, repair, and render orchestration
+- `app/sandbox_rendering.py`: Vercel Sandbox lifecycle and MP4 retrieval
+- `app/static/`: one-page MathimateLM interface
+- `tests/`: planner, compiler, pipeline, Sandbox, and Vercel response tests
 
-Required production variables:
+## Tests
 
-- the Foundry/OpenAI variables listed above
-- `VERCEL_SANDBOX_SNAPSHOT_ID`
+Run the full focused suite:
 
-The root `requirements.txt` is intentionally serverless-only. Use
-`requirements-local.txt` for local Manim development and
-`requirements-gemini.txt` for the optional Gemini variant.
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Run the representative live benchmark, which uses configured model credentials:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.benchmark_pipeline
+```
+
+## Optional Gemini variant
+
+The primary application uses the configured Foundry/OpenAI deployment. A separate
+Gemini-backed local variant remains available in `app/main_gemini.py`,
+`app/gemini_llm.py`, and `app/rendering_gemini.py`.
+
+Install it with:
+
+```powershell
+python -m pip install -r requirements-gemini.txt
+Copy-Item .env.gemini.example .env
+.venv\Scripts\python.exe -m uvicorn app.main_gemini:app --reload
+```
+
+Set `GEMINI_API_KEY` and optionally `GEMINI_MODEL`, which defaults to
+`gemini-2.5-flash`.
 
 ## Known limitations
 
-- No auth, queue, persistence layer, or object storage
-- Render jobs run synchronously in the request cycle
-- Rendered videos are returned inline on Vercel and stored locally during development
-- The controlled compiler currently supports graph, point, secant, tangent,
-  sliding-secant, area, Riemann-rectangle, and equation-transformation scenes
-- Unsupported or invalid plans fall back to free-form generation
-- Model planning quality depends on the selected Foundry/OpenAI deployment
-- Manim rendering will fail until system-level prerequisites are installed
+- No user authentication, queue, database, prompt cache, or object storage
+- Render jobs run synchronously within the request lifecycle
+- Model planning is not seeded, so semantic details can vary between requests
+- Controlled layouts currently focus on graphs, points, secants, tangents, areas,
+  Riemann rectangles, and equation transformations
+- Unsupported plans may still reach the free-form fallback after structured
+  validation and correction fail
+- Inline production videos must remain below the configured response budget
+- Local Manim rendering requires its system-level dependencies
