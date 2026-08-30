@@ -1,4 +1,4 @@
-# Calc Animator MVP
+# MathimateLM
 
 Minimal tutor-facing calculus visualization tool:
 
@@ -95,7 +95,7 @@ Optional variables:
 - `OPENAI_API_KEY` and `OPENAI_MODEL` provide a direct OpenAI fallback when
   Foundry variables are empty
 - `OPENAI_MODEL` default: `gpt-5-mini`
-- `APP_NAME` default: `AniMath - Math Animation Tool`
+- `APP_NAME` default: `MathimateLM`
 - `MAX_PROMPT_LENGTH` default: `600`
 - `MANIM_QUALITY_FLAG` default: `-ql`
 

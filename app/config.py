@@ -38,7 +38,7 @@ def get_settings() -> Settings:
         azure_openai_api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         azure_openai_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
         azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
-        app_name=os.getenv("APP_NAME", "AniMath - Math Animation Tool"),
+        app_name=os.getenv("APP_NAME", "MathimateLM"),
         max_prompt_length=int(os.getenv("MAX_PROMPT_LENGTH", "600")),
         render_quality_flag=os.getenv("MANIM_QUALITY_FLAG", "-ql"),
     )
