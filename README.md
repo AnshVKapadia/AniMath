@@ -1,20 +1,41 @@
 # Calc Animator MVP
 
-Minimal teacher-facing calculus visualization tool:
+Minimal tutor-facing calculus visualization tool:
 
-- teacher enters a natural-language calculus prompt
-- backend asks OpenAI for Manim code
-- app saves the code to disk
+- tutor enters a natural-language calculus prompt
+- backend asks Foundry/OpenAI for a constrained scene plan
+- a deterministic compiler turns the plan into frame-safe Manim code
 - backend renders an MP4 with Manim
-- frontend previews and downloads the result
+- tutor previews and downloads the result for use in a lesson
+
+## Run locally
+
+After installing the [Manim system prerequisites](https://docs.manim.community/en/stable/installation.html), run:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+Add your Foundry/OpenAI credentials to `.env`, then start the app:
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload --reload-dir app
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## Architecture
 
 This MVP uses one Python service:
 
-- `FastAPI` serves the teacher UI and the API
+- `FastAPI` serves the tutor UI and the API
 - plain HTML/CSS/JS keeps the frontend lightweight
-- OpenAI generates and optionally repairs Manim code
+- Foundry/OpenAI plans semantic animation beats as validated JSON
+- a controlled compiler owns coordinates, sizing, and transitions
+- free-form generation remains available as a render fallback
 - Manim renders videos into the local `renders/` directory
 
 This keeps the project easy to run locally and simple to deploy on a Python host.
@@ -22,8 +43,10 @@ This keeps the project easy to run locally and simple to deploy on a Python host
 ## Files
 
 - `app/main.py`: FastAPI routes and static file mounting
-- `app/llm.py`: OpenAI prompt and response handling
-- `app/rendering.py`: save code, run Manim, retry once on failure
+- `app/llm.py`: Foundry/OpenAI prompts and response handling
+- `app/scene_plan.py`: constrained scene-plan schema and validation
+- `app/scene_compiler.py`: deterministic layouts and runtime collision checks
+- `app/rendering.py`: plan, compile, render, fallback, and repair orchestration
 - `app/schemas.py`: request and response models
 - `app/static/`: one-page frontend
 - `renders/`: generated code and videos
@@ -55,20 +78,24 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Copy `.env.example` to `.env` and fill in your OpenAI key:
+Copy `.env.example` to `.env` and fill in your Foundry deployment details:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Required variables:
+Recommended variables:
 
-- `OPENAI_API_KEY`
+- `AZURE_OPENAI_API_KEY`
+- `AZURE_OPENAI_BASE_URL`
+- `AZURE_OPENAI_DEPLOYMENT`
 
 Optional variables:
 
+- `OPENAI_API_KEY` and `OPENAI_MODEL` provide a direct OpenAI fallback when
+  Foundry variables are empty
 - `OPENAI_MODEL` default: `gpt-5-mini`
-- `APP_NAME` default: `Calc Animator MVP`
+- `APP_NAME` default: `AniMath - Math Animation Tool`
 - `MAX_PROMPT_LENGTH` default: `600`
 - `MANIM_QUALITY_FLAG` default: `-ql`
 
@@ -95,13 +122,7 @@ Then set:
 
 This project’s Gemini variant defaults to `gemini-2.5-flash` because Google’s official Gemini Developer API pricing/docs currently show it on the free tier. Source: [Gemini Developer API pricing](https://ai.google.dev/pricing), [Gemini API quickstart](https://ai.google.dev/gemini-api/docs/quickstart), [Gemini text generation docs](https://ai.google.dev/gemini-api/docs/text-generation).
 
-## Run locally
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+## Tutor examples and alternatives
 
 To run the Gemini version instead:
 
@@ -115,6 +136,18 @@ Try prompts like:
 - `visualize a Riemann sum approaching the integral`
 - `animate a tangent line moving along y=x^2`
 - `illustrate a geometric series converging`
+
+Run the focused tests with:
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Run the representative live benchmark with:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.benchmark_pipeline
+```
 
 ## API
 
@@ -161,5 +194,8 @@ If you later want Vercel for the frontend, keep rendering on a separate Python b
 - No auth, queue, persistence layer, or object storage
 - Render jobs run synchronously in the request cycle
 - Output files are stored on local disk only
-- Model quality depends on the selected OpenAI model
+- The controlled compiler currently supports graph, point, secant, tangent,
+  sliding-secant, area, Riemann-rectangle, and equation-transformation scenes
+- Unsupported or invalid plans fall back to free-form generation
+- Model planning quality depends on the selected Foundry/OpenAI deployment
 - Manim rendering will fail until system-level prerequisites are installed

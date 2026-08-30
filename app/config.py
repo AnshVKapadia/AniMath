@@ -4,12 +4,15 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 RENDERS_DIR = BASE_DIR / "renders"
 STATIC_DIR = BASE_DIR / "app" / "static"
+
+load_dotenv(BASE_DIR / ".env")
 
 
 class Settings(BaseModel):

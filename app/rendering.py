@@ -9,6 +9,7 @@ from time import perf_counter
 
 from app.config import RENDERS_DIR, get_settings
 from app.llm import LLMClient
+from app.scene_compiler import compile_scene
 
 
 VIDEO_SUFFIX = "GeneratedScene.mp4"
@@ -52,10 +53,101 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
     media_dir = job_dir / "media"
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    _log(job_id, "llm", "Generating initial Manim code")
+    controlled = False
+    _log(job_id, "plan", "Generating a structured scene plan")
+    plan_start = perf_counter()
+    try:
+        plan = llm.generate_scene_plan(teacher_prompt)
+        compiled = compile_scene(plan)
+        code = _normalize_code(compiled.code)
+        plan_path = job_dir / "scene_plan.json"
+        plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+        controlled = True
+        _log(job_id, "plan", f"Controlled scene compiled in {_elapsed(plan_start)}")
+        _log(job_id, "files", f"Saved structured plan to {plan_path}")
+    except ValueError as exc:
+        _log(job_id, "fallback", f"Structured plan was not usable: {exc}")
+        code = _generate_freeform_code(llm, teacher_prompt, job_id)
+
+    scene_path = job_dir / "scene.py"
+    scene_path.write_text(code, encoding="utf-8")
+    _log(job_id, "files", f"Saved generated scene to {scene_path}")
+
+    success, details, video_path = _render_scene(
+        scene_path=scene_path,
+        media_dir=media_dir / ("controlled" if controlled else "freeform"),
+        job_id=job_id,
+    )
+    if success and video_path:
+        _log(job_id, "done", f"Pipeline finished in {_elapsed(total_start)}")
+        return RenderResult(
+            job_id=job_id,
+            code=code,
+            repaired=False,
+            video_path=video_path,
+            initial_video_path=video_path,
+            final_video_path=video_path,
+        )
+
+    if controlled:
+        _log(job_id, "fallback", "Controlled render failed; trying the free-form generator")
+        fallback_start = perf_counter()
+        code = _generate_freeform_code(llm, teacher_prompt, job_id)
+        fallback_path = job_dir / "scene_fallback.py"
+        fallback_path.write_text(code, encoding="utf-8")
+        _log(job_id, "files", f"Saved free-form fallback scene to {fallback_path}")
+        success, details, video_path = _render_scene(
+            scene_path=fallback_path,
+            media_dir=media_dir / "fallback",
+            job_id=job_id,
+        )
+        if success and video_path:
+            _log(job_id, "done", f"Fallback rendered in {_elapsed(fallback_start)}")
+            return RenderResult(
+                job_id=job_id,
+                code=code,
+                repaired=True,
+                video_path=video_path,
+                final_video_path=video_path,
+            )
+
+    _log(job_id, "repair", "Initial render failed; requesting one repair pass")
+    repair_start = perf_counter()
+    repaired_code = _normalize_code(llm.repair_code(teacher_prompt, code, details))
+    _log(job_id, "repair", f"Repair code generated in {_elapsed(repair_start)}")
+    repaired_path = job_dir / "scene_fixed.py"
+    repaired_path.write_text(repaired_code, encoding="utf-8")
+    _log(job_id, "files", f"Saved repaired scene to {repaired_path}")
+
+    repaired_success, repaired_details, repaired_video = _render_scene(
+        scene_path=repaired_path,
+        media_dir=media_dir / "repaired",
+        job_id=job_id,
+    )
+    if repaired_success and repaired_video:
+        _log(job_id, "done", f"Pipeline finished in {_elapsed(total_start)} after repair")
+        return RenderResult(
+            job_id=job_id,
+            code=repaired_code,
+            repaired=True,
+            video_path=repaired_video,
+            initial_video_path=video_path,
+            final_video_path=repaired_video,
+        )
+
+    _log(job_id, "error", f"Pipeline failed in {_elapsed(total_start)} after repair")
+    raise RenderPipelineError(
+        "Render failed after one repair attempt.",
+        job_id=job_id,
+        details=repaired_details,
+    )
+
+
+def _generate_freeform_code(llm: LLMClient, teacher_prompt: str, job_id: str) -> str:
+    _log(job_id, "llm", "Generating free-form Manim code")
     generate_start = perf_counter()
     code = _normalize_code(llm.generate_code(teacher_prompt))
-    _log(job_id, "llm", f"Initial code generated in {_elapsed(generate_start)}")
+    _log(job_id, "llm", f"Free-form code generated in {_elapsed(generate_start)}")
     if _needs_preemptive_repair(code):
         _log(job_id, "repair", "Unsupported LaTeX template usage detected; requesting repair")
         repair_start = perf_counter()
@@ -81,56 +173,7 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
             )
         )
         _log(job_id, "repair", f"Layout repair completed in {_elapsed(repair_start)}")
-    scene_path = job_dir / "scene.py"
-    scene_path.write_text(code, encoding="utf-8")
-    _log(job_id, "files", f"Saved generated scene to {scene_path}")
-
-    success, details, video_path = _render_scene(
-        scene_path=scene_path,
-        media_dir=media_dir,
-        job_id=job_id,
-    )
-    if success and video_path:
-        _log(job_id, "done", f"Pipeline finished in {_elapsed(total_start)}")
-        return RenderResult(
-            job_id=job_id,
-            code=code,
-            repaired=False,
-            video_path=video_path,
-            initial_video_path=video_path,
-            final_video_path=video_path,
-        )
-
-    _log(job_id, "repair", "Initial render failed; requesting one repair pass")
-    repair_start = perf_counter()
-    repaired_code = _normalize_code(llm.repair_code(teacher_prompt, code, details))
-    _log(job_id, "repair", f"Repair code generated in {_elapsed(repair_start)}")
-    repaired_path = job_dir / "scene_fixed.py"
-    repaired_path.write_text(repaired_code, encoding="utf-8")
-    _log(job_id, "files", f"Saved repaired scene to {repaired_path}")
-
-    repaired_success, repaired_details, repaired_video = _render_scene(
-        scene_path=repaired_path,
-        media_dir=media_dir,
-        job_id=job_id,
-    )
-    if repaired_success and repaired_video:
-        _log(job_id, "done", f"Pipeline finished in {_elapsed(total_start)} after repair")
-        return RenderResult(
-            job_id=job_id,
-            code=repaired_code,
-            repaired=True,
-            video_path=repaired_video,
-            initial_video_path=video_path,
-            final_video_path=repaired_video,
-        )
-
-    _log(job_id, "error", f"Pipeline failed in {_elapsed(total_start)} after repair")
-    raise RenderPipelineError(
-        "Render failed after one repair attempt.",
-        job_id=job_id,
-        details=repaired_details,
-    )
+    return code
 
 
 def _normalize_code(code: str) -> str:

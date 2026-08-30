@@ -9,6 +9,36 @@ const initialRenderCard = document.getElementById("initial-render-card");
 const initialVideoPreview = document.getElementById("initial-video-preview");
 const codeOutput = document.getElementById("code-output");
 const downloadLink = document.getElementById("download-link");
+const playbackControls = document.querySelectorAll("[data-playback-control]");
+
+playbackControls.forEach((control) => {
+  const video = document.getElementById(control.dataset.videoId);
+  const speedButtons = control.querySelectorAll("[data-speed]");
+
+  function applySelectedSpeed() {
+    const selected = control.querySelector("[data-speed].active");
+    const speed = Number(selected?.dataset.speed || 1);
+    video.defaultPlaybackRate = speed;
+    video.playbackRate = speed;
+  }
+
+  control.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-speed]");
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    speedButtons.forEach((candidate) => {
+      const isSelected = candidate === button;
+      candidate.classList.toggle("active", isSelected);
+      candidate.setAttribute("aria-pressed", String(isSelected));
+    });
+    applySelectedSpeed();
+  });
+
+  video.addEventListener("loadedmetadata", applySelectedSpeed);
+});
 
 function setLoading(isLoading) {
   submitButton.disabled = isLoading;

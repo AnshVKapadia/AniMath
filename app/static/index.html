@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AniMath - Math Animation Tool</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260731-3" />
   </head>
   <body>
     <main class="page-shell">
@@ -51,12 +51,44 @@
             <p class="eyebrow">Initial Render</p>
             <h3>Risky-layout version</h3>
             <video id="initial-video-preview" controls playsinline></video>
+            <div
+              class="speed-control"
+              data-playback-control
+              data-video-id="initial-video-preview"
+              role="group"
+              aria-label="Initial render playback speed"
+            >
+              <span class="speed-label">Playback speed</span>
+              <div class="speed-options">
+                <button type="button" data-speed="0.25" aria-pressed="false">0.25x</button>
+                <button type="button" data-speed="0.5" aria-pressed="false">0.5x</button>
+                <button type="button" data-speed="1" class="active" aria-pressed="true">1x</button>
+                <button type="button" data-speed="1.5" aria-pressed="false">1.5x</button>
+                <button type="button" data-speed="2" aria-pressed="false">2x</button>
+              </div>
+            </div>
           </section>
 
           <section class="render-card" id="final-render-card">
             <p class="eyebrow">Final Render</p>
             <h3>Selected output</h3>
             <video id="video-preview" controls playsinline></video>
+            <div
+              class="speed-control"
+              data-playback-control
+              data-video-id="video-preview"
+              role="group"
+              aria-label="Final render playback speed"
+            >
+              <span class="speed-label">Playback speed</span>
+              <div class="speed-options">
+                <button type="button" data-speed="0.25" aria-pressed="false">0.25x</button>
+                <button type="button" data-speed="0.5" aria-pressed="false">0.5x</button>
+                <button type="button" data-speed="1" class="active" aria-pressed="true">1x</button>
+                <button type="button" data-speed="1.5" aria-pressed="false">1.5x</button>
+                <button type="button" data-speed="2" aria-pressed="false">2x</button>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -67,6 +99,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js" defer></script>
+    <script src="/static/app.js?v=20260731-3" defer></script>
   </body>
 </html>
