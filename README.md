@@ -98,7 +98,7 @@ production rendering happens in the Sandbox runtime instead.
 
 - Vercel project: `mathimatelm`
 - Production URL: [https://mathimatelm.vercel.app](https://mathimatelm.vercel.app)
-- Production branch: `codex/vercel-deployment`
+- Production branch: `master`
 - FastAPI entrypoint: `index.py`
 - Function timeout: 300 seconds, configured in `vercel.json`
 
