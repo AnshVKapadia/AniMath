@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import Mock
 
 from app.llm import LLMClient, _validate_teaching_depth
+from app.scene_compiler import compile_scene
 from app.scene_plan import ScenePlan
 
 
@@ -71,6 +72,26 @@ class TeachingDepthTests(unittest.TestCase):
 
         self.assertEqual(len(plan.beats), 8)
         self.assertEqual(client._run.call_count, 2)
+
+    def test_compiler_rejection_gets_one_structured_revision(self) -> None:
+        invalid = shallow_formal_plan().model_copy(
+            update={"function_expression": "x // 2"}
+        )
+        corrected = shallow_formal_plan()
+        client = LLMClient.__new__(LLMClient)
+        client._run = Mock(
+            side_effect=[invalid.model_dump_json(), corrected.model_dump_json()]
+        )
+
+        plan = client.generate_scene_plan(
+            "Visualize a derivative.",
+            plan_validator=compile_scene,
+        )
+
+        self.assertEqual(plan.function_expression, "x**2")
+        self.assertEqual(client._run.call_count, 2)
+        correction_prompt = client._run.call_args_list[1].args[0]
+        self.assertIn("unsupported syntax: FloorDiv", correction_prompt)
 
 
 if __name__ == "__main__":

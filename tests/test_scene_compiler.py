@@ -97,6 +97,14 @@ class SceneCompilerTests(unittest.TestCase):
         self.assertIn("np.sin(x)", compiled.code)
         self.assertIn("np.exp(-x ** 2)", compiled.code)
 
+    def test_caret_power_notation_is_normalized_safely(self) -> None:
+        plan = graph_plan("x^2")
+
+        compiled = compile_scene(plan)
+
+        self.assertEqual(plan.function_expression, "x**2")
+        self.assertIn("function = lambda x: x ** 2", compiled.code)
+
     def test_secant_point_labels_use_controlled_placement(self) -> None:
         compiled = compile_scene(labeled_secant_plan())
 

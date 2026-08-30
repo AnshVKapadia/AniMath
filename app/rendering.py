@@ -57,7 +57,7 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
     _log(job_id, "plan", "Generating a structured scene plan")
     plan_start = perf_counter()
     try:
-        plan = llm.generate_scene_plan(teacher_prompt)
+        plan = llm.generate_scene_plan(teacher_prompt, plan_validator=compile_scene)
         compiled = compile_scene(plan)
         code = _normalize_code(compiled.code)
         plan_path = job_dir / "scene_plan.json"

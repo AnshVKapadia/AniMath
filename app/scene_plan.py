@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class VisualKind(StrEnum):
@@ -86,6 +86,13 @@ class ScenePlan(BaseModel):
     x_range: tuple[float, float, float] = (-3.0, 3.0, 1.0)
     y_range: tuple[float, float, float] = (-2.0, 6.0, 1.0)
     beats: list[SceneBeat] = Field(min_length=2, max_length=8)
+
+    @field_validator("function_expression", mode="before")
+    @classmethod
+    def normalize_function_expression(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.replace("^", "**")
+        return value
 
     @model_validator(mode="after")
     def validate_scene(self) -> "ScenePlan":

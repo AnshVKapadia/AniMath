@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from textwrap import dedent
+from typing import Callable
 
 from openai import OpenAI
 
@@ -11,7 +12,7 @@ from app.scene_plan import ScenePlan, VisualAction
 
 SYSTEM_PROMPT = dedent(
     """
-    You generate short, valid Manim Community Edition scenes for a teacher-facing
+    You generate short, valid Manim Community Edition scenes for a tutor-facing
     calculus visualization tool.
 
     Hard requirements:
@@ -104,8 +105,9 @@ SCENE_PLANNER_PROMPT = dedent(
       substitution, expansion, combining or canceling like terms, factoring the
       common h, canceling h, taking the limit, and stating the result. Never
       combine factoring and cancellation into the same beat.
-    - For graph plans, function_expression may use x, numbers, arithmetic, powers,
-      sin, cos, tan, exp, log, sqrt, abs, pi, and e.
+    - For graph plans, function_expression must be valid Python and may use x,
+      numbers, arithmetic, powers, sin, cos, tan, exp, log, sqrt, abs, pi, and e.
+      Always write powers with Python's ** operator, never with ^.
     - Graph plans may use show_formula for algebra-only beats. This keeps the
       current graph overlay visible while the sidebar formula changes.
     - Equation plans must use show_formula for every beat and set
@@ -165,7 +167,11 @@ class LLMClient:
         ).strip()
         return self._run(prompt, SYSTEM_PROMPT)
 
-    def generate_scene_plan(self, teacher_prompt: str) -> ScenePlan:
+    def generate_scene_plan(
+        self,
+        teacher_prompt: str,
+        plan_validator: Callable[[ScenePlan], object] | None = None,
+    ) -> ScenePlan:
         base_prompt = dedent(
             f"""
             Teacher request:
@@ -181,6 +187,8 @@ class LLMClient:
             try:
                 plan = ScenePlan.model_validate(json.loads(_json_object_text(raw_plan)))
                 _validate_teaching_depth(teacher_prompt, plan)
+                if plan_validator is not None:
+                    plan_validator(plan)
                 return plan
             except ValueError as exc:
                 last_error = exc

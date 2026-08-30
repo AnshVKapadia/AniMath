@@ -8,6 +8,32 @@ from app.scene_plan import ScenePlan
 
 
 class ScenePlanTests(unittest.TestCase):
+    def test_caret_exponents_are_normalized_to_python_powers(self) -> None:
+        plan = ScenePlan.model_validate(
+            {
+                "title": "Riemann sums",
+                "visual_kind": "graph",
+                "function_expression": "x^2",
+                "beats": [
+                    {
+                        "formula": "f(x)=x^2",
+                        "explanation": "Draw the curve.",
+                        "action": "show_graph",
+                    },
+                    {
+                        "formula": r"S_n\to\int_0^2 x^2\,dx",
+                        "explanation": "Refine the rectangles.",
+                        "action": "show_riemann",
+                        "interval_start": 0,
+                        "interval_end": 2,
+                        "dx": 0.5,
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(plan.function_expression, "x**2")
+
     def test_graph_plan_accepts_controlled_actions(self) -> None:
         plan = ScenePlan.model_validate(
             {
