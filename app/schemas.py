@@ -12,6 +12,8 @@ class GenerateResponse(BaseModel):
     videoUrl: str
     code: str
     repaired: bool
+    initialVideoUrl: str | None = None
+    finalVideoUrl: str | None = None
 
 
 class GenerateErrorResponse(BaseModel):

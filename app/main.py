@@ -65,9 +65,21 @@ async def generate_animation(payload: GenerateRequest) -> GenerateResponse:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     relative_video = result.video_path.relative_to(RENDERS_DIR).as_posix()
+    initial_video_url = (
+        f"/renders/{result.initial_video_path.relative_to(RENDERS_DIR).as_posix()}"
+        if result.initial_video_path
+        else None
+    )
+    final_video_url = (
+        f"/renders/{result.final_video_path.relative_to(RENDERS_DIR).as_posix()}"
+        if result.final_video_path
+        else None
+    )
     return GenerateResponse(
         jobId=result.job_id,
         videoUrl=f"/renders/{relative_video}",
         code=result.code,
         repaired=result.repaired,
+        initialVideoUrl=initial_video_url,
+        finalVideoUrl=final_video_url,
     )

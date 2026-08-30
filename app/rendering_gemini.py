@@ -26,6 +26,7 @@ def run_gemini_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderRe
     generate_start = perf_counter()
     code = _normalize_code(llm.generate_code(teacher_prompt))
     _log(job_id, "llm", f"Initial Gemini code generated in {_elapsed(generate_start)}")
+    initial_code = code
     if _needs_preemptive_repair(code):
         _log(job_id, "repair", "Unsupported LaTeX template usage detected; requesting repair")
         repair_start = perf_counter()
@@ -38,7 +39,22 @@ def run_gemini_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderRe
             )
         )
         _log(job_id, "repair", f"Preemptive Gemini repair completed in {_elapsed(repair_start)}")
+        initial_code = code
+
+    initial_video_path = None
     if _needs_layout_repair(code):
+        initial_scene_path = job_dir / "scene_initial.py"
+        initial_scene_path.write_text(initial_code, encoding="utf-8")
+        _log(job_id, "files", f"Saved initial risky-layout scene to {initial_scene_path}")
+        initial_success, _, initial_video = _render_scene(
+            scene_path=initial_scene_path,
+            media_dir=media_dir / "initial",
+            job_id=job_id,
+        )
+        if initial_success and initial_video:
+            initial_video_path = initial_video
+            _log(job_id, "render", f"Initial risky-layout render succeeded at {initial_video_path}")
+
         _log(job_id, "repair", "Risky layout detected; requesting frame-fit Gemini repair")
         repair_start = perf_counter()
         code = _normalize_code(
@@ -57,12 +73,19 @@ def run_gemini_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderRe
 
     success, details, video_path = _render_scene(
         scene_path=scene_path,
-        media_dir=media_dir,
+        media_dir=media_dir / "final",
         job_id=job_id,
     )
     if success and video_path:
         _log(job_id, "done", f"Gemini pipeline finished in {_elapsed(total_start)}")
-        return RenderResult(job_id=job_id, code=code, repaired=False, video_path=video_path)
+        return RenderResult(
+            job_id=job_id,
+            code=code,
+            repaired=initial_video_path is not None,
+            video_path=video_path,
+            initial_video_path=initial_video_path or video_path,
+            final_video_path=video_path,
+        )
 
     _log(job_id, "repair", "Initial render failed; requesting one Gemini repair pass")
     repair_start = perf_counter()
@@ -74,7 +97,7 @@ def run_gemini_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderRe
 
     repaired_success, repaired_details, repaired_video = _render_scene(
         scene_path=repaired_path,
-        media_dir=media_dir,
+        media_dir=media_dir / "final",
         job_id=job_id,
     )
     if repaired_success and repaired_video:
@@ -84,6 +107,8 @@ def run_gemini_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderRe
             code=repaired_code,
             repaired=True,
             video_path=repaired_video,
+            initial_video_path=initial_video_path,
+            final_video_path=repaired_video,
         )
 
     _log(job_id, "error", f"Gemini pipeline failed in {_elapsed(total_start)} after repair")
