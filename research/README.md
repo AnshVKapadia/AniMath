@@ -1,5 +1,9 @@
 # MathimateAgent research fork
 
+Active pivot: [Lean-grounded proof explanations](lean_agent/README.md).
+See the [revised research plan](docs/LEAN_RESEARCH_PLAN.md). The material below
+documents the preserved calculus experiment, not the new proof benchmark.
+
 Independent research scaffold on top of MathimateLM. No UNT/UTSW data, models,
 funding, or project code is used. The existing application is unchanged.
 
