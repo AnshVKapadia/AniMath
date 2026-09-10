@@ -18,6 +18,8 @@ class DemoTests(unittest.TestCase):
             page = (out / 'index.html').read_text(encoding='utf-8')
             self.assertIn('Simulated input', page)
             self.assertIn('not formally verified', page)
+            self.assertIn('Conceptual animation', page)
+            self.assertIn("f.kind==='split_goal'", page)
 
 
 if __name__ == '__main__':

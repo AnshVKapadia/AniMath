@@ -5,10 +5,11 @@ See [the complete revised research plan](../docs/LEAN_RESEARCH_PLAN.md).
 
 ## Status
 
-Implemented: typed task/storyboard/trace contracts; conservative Lean JSON message
-adapter; fixed-proof hash binding and axiom allowlist; deterministic Manim compiler;
+Implemented: typed task/storyboard/trace contracts; seven constrained conceptual
+visual primitives plus a proof-state baseline; conservative Lean JSON message adapter;
+fixed-proof hash binding and axiom allowlist; deterministic graphical Manim compiler;
 bounded A/B/C/D/E/T loop; per-candidate logs; randomized paired evaluation schedule;
-four explicitly unvalidated development tasks; eleven passing fixture-based unit tests.
+four explicitly unvalidated development tasks; thirteen passing fixture-based unit tests.
 
 NOT demonstrated: compatibility with a real Lean 4.19.0 process, a rendered animation,
 a live model run, narration faithfulness, a validated benchmark, or an empirical gain.
@@ -19,7 +20,8 @@ was blocked. Existing provider dependencies also need installation in a run envi
 
 ```bash
 python -m unittest research.tests.test_lean_agent -v
-# Offline fixture preview: demonstrates the current data flow, not Lean/LLM/Manim.
+# Offline animated fixture preview: demonstrates the current data flow and visual
+# vocabulary in a browser, but does not run Lean, an LLM, or Manim.
 python -m research.lean_agent.demo --out research/runs/fixture-demo
 # Open research/runs/fixture-demo/index.html in a browser.
 python -m research.lean_agent.cli schema --out research/runs/lean-schema
@@ -55,8 +57,12 @@ render-plus-alignment selection rule as D, without exposing feedback to the mode
 
 Reuses `ResearchLLM` and `DockerExecutor`; the latter still emits its old calculus
 probe, which is irrelevant to Lean evidence and must never be scored as proof validity.
-All rendered math panels are copied from snapshots. Unknown IDs show missing evidence,
-not silently corrected states. Narration is visibly labeled unverified. The container
+Every generated beat references snapshots but uses a controlled visual action:
+`introduce_facts`, `split_goal`, `select_fact`, `swap_objects`, `choose_witness`,
+`rewrite_expression`, or `show_subset`. The deterministic T baseline uses
+`proof_state`. The full agent is not allowed to emit arbitrary Manim code. Unknown IDs
+show missing evidence, not silently corrected states. Narration and visual metaphors
+are visibly labeled unverified. The container
 has no network or provider credentials. For deployment with external Lean input, add
 an isolated Lean worker: string filtering is only corpus hygiene, not security.
 
@@ -64,5 +70,6 @@ an isolated Lean worker: string filtering is only corpus hygiene, not security.
 
 Run extraction on the four development seeds with actual Lean; verify message positions,
 final `no goals`, and axiom output. If the adapter fails, repair it against saved real
-diagnostics, not fixtures. Then render T and inspect glyphs/layout. Only after both
+diagnostics, not fixtures. Then render the conceptual conjunction storyboard and T;
+inspect motion, glyphs, and layout. Only after both
 gates should any paid model sweep begin. No sample videos or success rates exist yet.

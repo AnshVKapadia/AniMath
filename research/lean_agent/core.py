@@ -8,7 +8,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Strict(BaseModel):
@@ -41,10 +41,30 @@ class Trace(Strict):
     axioms: list[str]
 
 
+class VisualSpec(Strict):
+    kind: Literal['introduce_facts', 'split_goal', 'select_fact', 'swap_objects',
+                  'choose_witness', 'rewrite_expression', 'show_subset', 'proof_state']
+    labels: list[str] = Field(min_length=1, max_length=4)
+
+    @model_validator(mode='after')
+    def validate_labels(self):
+        expected = {
+            'introduce_facts': 2, 'split_goal': 2, 'select_fact': 1,
+            'swap_objects': 2, 'choose_witness': 1,
+            'rewrite_expression': 2, 'show_subset': 2, 'proof_state': 1,
+        }[self.kind]
+        if len(self.labels) != expected:
+            raise ValueError(f'{self.kind} requires exactly {expected} label(s)')
+        if any(not label.strip() or len(label) > 40 or '\n' in label for label in self.labels):
+            raise ValueError('Visual labels must be 1-40 characters on one line')
+        return self
+
+
 class Beat(Strict):
     before: str
     after: str
     narration: str = Field(min_length=1, max_length=240)
+    visual: VisualSpec
 
 
 class Storyboard(Strict):
@@ -146,52 +166,122 @@ def verify(board: Storyboard, trace: Trace):
         errors.append('duplicate_transition')
     if actual != expected and not errors:
         errors.append('transition_order')
-    return {'structural_pass': bool(expected) and not errors, 'errors': errors,
+    conceptual = all(beat.visual.kind != 'proof_state' for beat in board.beats)
+    return {'structural_pass': bool(expected) and not errors,
+            'conceptual_plan_pass': conceptual, 'errors': errors,
             'narration_verified': False, 'visual_correctness_verified': False}
 
 
 def template(trace: Trace):
     return Storyboard(beats=[Beat(before=a.id, after=b.id,
-                                 narration='The tactic changes the proof state shown below.')
+                                 narration='The tactic changes the proof state shown below.',
+                                 visual=VisualSpec(kind='proof_state', labels=['Formal step']))
                              for a, b in zip(trace.snapshots, trace.snapshots[1:])])
 
 
 def compile_board(board: Storyboard, trace: Trace):
-    """Math panels are copied from trace, not generated. Narration remains unverified.
+    """Compile a constrained graphical plan; narration and metaphors remain unverified.
 
     Unknown IDs render as explicitly missing evidence so non-verifier baselines
     can still render. There is NO automatic correction of storyboard references.
     """
     states = {s.id: s.goals for s in trace.snapshots}
-    frames = [{'before': states.get(b.before, 'MISSING EVIDENCE: ' + b.before),
+    frames = [{'before_id': b.before, 'after_id': b.after,
+               'before': states.get(b.before, 'MISSING EVIDENCE: ' + b.before),
                'after': states.get(b.after, 'MISSING EVIDENCE: ' + b.after),
-               'narration': b.narration} for b in board.beats]
+               'narration': b.narration, 'kind': b.visual.kind,
+               'labels': b.visual.labels} for b in board.beats]
     # repr creates Python string literals, never executable model-supplied code.
     return '''from manim import *
 class GeneratedScene(Scene):
+    def card(self, label, color=BLUE, width=2.6):
+        box = RoundedRectangle(width=width, height=1.25, corner_radius=0.15,
+                               color=color, fill_color=color, fill_opacity=0.14)
+        text = Text(label, font_size=34)
+        if text.width > width - 0.25:
+            text.scale((width - 0.25) / text.width)
+        return VGroup(box, text)
+
+    def visual(self, frame):
+        kind, labels = frame['kind'], frame['labels']
+        if kind == 'introduce_facts':
+            items = VGroup(*[self.card(x, c) for x, c in zip(labels, [BLUE, GREEN])]).arrange(RIGHT, buff=0.8)
+            container = RoundedRectangle(width=6.8, height=2.2, corner_radius=0.2, color=YELLOW)
+            cap = Text('Known together', font_size=26).next_to(container, UP)
+            items.move_to(container)
+            self.play(FadeIn(container), FadeIn(cap), LaggedStart(*[FadeIn(x, shift=UP) for x in items]))
+            return VGroup(container, cap, items)
+        if kind == 'split_goal':
+            whole = self.card(' AND '.join(labels), PURPLE, 5.5)
+            parts = VGroup(*[self.card(x, c) for x, c in zip(labels, [BLUE, GREEN])]).arrange(RIGHT, buff=1.1)
+            self.play(FadeIn(whole))
+            self.play(ReplacementTransform(whole, parts))
+            return parts
+        if kind == 'select_fact':
+            fact = self.card(labels[0], GREEN).shift(LEFT * 3)
+            goal = self.card('Goal: ' + labels[0], YELLOW).shift(RIGHT * 3)
+            arrow = Arrow(fact.get_right(), goal.get_left(), color=WHITE)
+            self.play(FadeIn(fact), FadeIn(goal), GrowArrow(arrow))
+            token = self.card(labels[0], GREEN).scale(0.65).move_to(fact)
+            self.play(token.animate.move_to(goal))
+            return VGroup(fact, goal, arrow, token)
+        if kind == 'swap_objects':
+            left, right = self.card(labels[0], BLUE), self.card(labels[1], GREEN)
+            left.shift(LEFT * 2.3); right.shift(RIGHT * 2.3)
+            self.play(FadeIn(left), FadeIn(right))
+            self.play(left.animate.shift(RIGHT * 4.6), right.animate.shift(LEFT * 4.6))
+            return VGroup(left, right)
+        if kind == 'choose_witness':
+            target = self.card('Need an example', YELLOW, 4.2)
+            witness = self.card(labels[0], GREEN).shift(DOWN * 2)
+            self.play(FadeIn(target), FadeIn(witness))
+            self.play(witness.animate.move_to(target))
+            return VGroup(target, witness)
+        if kind == 'rewrite_expression':
+            before = self.card(labels[0], BLUE, 5.8)
+            after = self.card(labels[1], GREEN, 5.8)
+            self.play(FadeIn(before))
+            self.play(ReplacementTransform(before, after))
+            return after
+        if kind == 'show_subset':
+            outer = Ellipse(width=7, height=3.8, color=BLUE)
+            inner = Ellipse(width=3.2, height=1.8, color=GREEN, fill_opacity=0.18)
+            a = Text(labels[1], font_size=30).next_to(outer, UP)
+            b = Text(labels[0], font_size=30).move_to(inner)
+            self.play(Create(outer), FadeIn(a)); self.play(Create(inner), FadeIn(b))
+            return VGroup(outer, inner, a, b)
+        before = Text(frame['before'], font_size=25)
+        after = Text(frame['after'], font_size=25)
+        for obj in (before, after):
+            if obj.width > 11: obj.scale(11 / obj.width)
+            if obj.height > 3: obj.scale(3 / obj.height)
+        self.play(FadeIn(before)); self.play(ReplacementTransform(before, after))
+        return after
+
     def construct(self):
         frames = ''' + repr(frames) + '''
         for frame in frames:
-            blocks = []
-            for label, value in [('Before', frame['before']), ('After', frame['after']),
-                                 ('Unverified explanation', frame['narration'])]:
-                obj = Text(label + '\\n' + value, font_size=24)
-                factor = min(1, 12 / max(obj.width, 0.01), 1.7 / max(obj.height, 0.01))
-                obj.scale(factor)
-                blocks.append(obj)
-            group = VGroup(*blocks).arrange(DOWN, buff=0.3)
-            self.play(FadeIn(group))
-            self.wait(3)
-            self.play(FadeOut(group))
+            evidence = Text('Lean evidence: ' + frame['before_id'] + ' → ' + frame['after_id'],
+                            font_size=21, color=GRAY_A).to_edge(UP)
+            narration = Text(frame['narration'], font_size=26).to_edge(DOWN)
+            if narration.width > 12: narration.scale(12 / narration.width)
+            self.play(FadeIn(evidence), FadeIn(narration))
+            artwork = self.visual(frame)
+            self.wait(2)
+            self.play(FadeOut(VGroup(evidence, narration, artwork)))
 '''
 
 
-SYSTEM = '''Create a proof explanation storyboard, not a new proof. Output JSON only:
-{"beats":[{"before":"s0","after":"s1","narration":"Short explanation"}]}.
+SYSTEM = '''Create a conceptual visual proof storyboard, not a new proof. Output JSON only:
+{"beats":[{"before":"s0","after":"s1","narration":"Short explanation",
+"visual":{"kind":"split_goal","labels":["Q","P"]}}]}.
 Use one beat for each adjacent proof-state transition in order, covering all tactics.
+Choose a kind from introduce_facts, split_goal, select_fact, swap_objects,
+choose_witness, rewrite_expression, show_subset. Labels must be short and conceptual.
 Do not invent intermediate steps hidden inside automated tactics. Explain how the
 visible hypotheses and goals change; a goal is an obligation, not an established fact.
-Narration is not formally certified. Do not claim the video is Lean-verified.'''
+The visual metaphor and narration are not formally certified. Do not claim that the
+video itself is Lean-verified. Use proof_state only for the no-LLM baseline.'''
 
 
 def run(task, trace, condition, llm, executor, out, max_attempts=3):
@@ -233,6 +323,7 @@ def run(task, trace, condition, llm, executor, out, max_attempts=3):
             checks = verify(board, trace)
             observation = executor.render(compile_board(board, trace), out / f'attempt-{index}')
             event.update(rendered=observation.rendered, structural_pass=checks['structural_pass'],
+                         conceptual_plan_pass=checks['conceptual_plan_pass'],
                          category=observation.category, checks=checks, video=observation.video)
             infrastructure_error = observation.infrastructure_error
             history.append(event)
@@ -240,7 +331,8 @@ def run(task, trace, condition, llm, executor, out, max_attempts=3):
                 break
             if observation.rendered and selected is None:
                 selected = index
-            if observation.rendered and (condition not in {'D', 'R'} or checks['structural_pass']):
+            if observation.rendered and (condition not in {'D', 'R'} or
+                                         (checks['structural_pass'] and checks['conceptual_plan_pass'])):
                 selected = index
                 break
             if condition == 'R':
@@ -260,6 +352,7 @@ def run(task, trace, condition, llm, executor, out, max_attempts=3):
               'replicate': 0, 'source_sha256': trace.source_sha256,
               'first_render': history[0]['rendered'], 'final_render': bool(chosen.get('rendered')),
               'automatic_pass': bool(chosen.get('structural_pass')),
+              'conceptual_plan_pass': bool(chosen.get('conceptual_plan_pass')),
               'semantic_faithfulness': None, 'selected_attempt': selected,
               'n_attempts': len(history), 'seconds': perf_counter() - started,
               'input_tokens': getattr(llm, 'input_tokens', 0),

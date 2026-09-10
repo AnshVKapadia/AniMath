@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from research.lean_agent.core import (ProofTask, Snapshot, Trace, Storyboard,
+from research.lean_agent.core import (ProofTask, Snapshot, Trace, Storyboard, VisualSpec,
                                      source_for, parse_trace, template, verify, compile_board, run)
 
 
@@ -18,6 +18,14 @@ def fixture():
                              Snapshot(id='s1', goals='P : Prop\nh : P\n⊢ P'),
                              Snapshot(id='s2', goals='no goals')], axioms=[])
     return task, trace
+
+
+def conceptual(trace):
+    board = template(trace)
+    for index, beat in enumerate(board.beats):
+        beat.visual = VisualSpec(kind='rewrite_expression',
+                                 labels=[f'Idea {index}', f'Idea {index + 1}'])
+    return board
 
 
 class FakeModel:
@@ -46,6 +54,7 @@ class LeanAgentTests(unittest.TestCase):
         _, trace = fixture()
         result = verify(template(trace), trace)
         self.assertTrue(result['structural_pass'])
+        self.assertFalse(result['conceptual_plan_pass'])
         self.assertFalse(result['narration_verified'])
 
     def test_missing_transition(self):
@@ -68,10 +77,19 @@ class LeanAgentTests(unittest.TestCase):
         code = compile_board(board, trace)
         ast.parse(code)
         self.assertIn('MISSING EVIDENCE', code)
+        self.assertIn("kind == 'split_goal'", code)
+
+    def test_visual_primitive_contract(self):
+        with self.assertRaises(ValueError):
+            VisualSpec(kind='split_goal', labels=['only one'])
+        with self.assertRaises(ValueError):
+            VisualSpec(kind='select_fact', labels=['too', 'many'])
+        self.assertEqual(VisualSpec(kind='swap_objects', labels=['P', 'Q']).kind,
+                         'swap_objects')
 
     def test_repair_vs_render_only(self):
         task, trace = fixture()
-        good = template(trace)
+        good = conceptual(trace)
         bad = good.model_copy(deep=True)
         bad.beats.pop()
         for condition, calls, passes in [('D', 2, True), ('E', 1, False)]:
@@ -89,7 +107,7 @@ class LeanAgentTests(unittest.TestCase):
 
     def test_resampling_receives_no_feedback(self):
         task, trace = fixture()
-        good = template(trace)
+        good = conceptual(trace)
         bad = good.model_copy(deep=True)
         bad.beats.pop()
         model = FakeModel([bad.model_dump_json(), good.model_dump_json()])

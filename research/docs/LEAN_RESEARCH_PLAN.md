@@ -7,8 +7,8 @@ The previous calculus research plan remains preserved, but is no longer the acti
 ## 1. Research decision and actual repository
 
 Central question: **Does access to Lean proof-state traces, combined with explicit
-evidence alignment and bounded repair, improve the faithfulness of LLM-generated
-visual proof explanations compared with source-only generation?**
+evidence alignment and bounded repair, improve the faithfulness of conceptual visual
+proof explanations without reducing their accessibility to non-Lean viewers?**
 
 Input is an existing, fixed Lean proof plus an explanation request. Output is a short
 visual explanation with links to actual proof states. This is NOT a theorem prover,
@@ -90,8 +90,10 @@ set supports the study; it is not yet a third major benchmark contribution.
    goal-state snapshots at tactic boundaries and audit theorem axiom dependencies.
 2. Bind trace to source hash/version. Prompt the model with request, source, and,
    in trace conditions, snapshots. Generate a typed storyboard in one call.
-3. Storyboard beats cite before/after snapshot IDs and provide short narration.
-   The deterministic compiler copies the cited goal/hypothesis panels into Manim.
+3. Storyboard beats cite before/after snapshot IDs, provide short narration, and select
+   a constrained conceptual action. The deterministic compiler creates Manim shapes
+   for facts, goals, witnesses, rewriting, swapping, and subset relationships. Raw Lean
+   states remain optional evidence rather than the primary presentation.
 4. Execute in the reused restricted Docker renderer. Observe diagnostics and artifact.
 5. Verify ID existence, supported transitions, order, duplication, and coverage.
    Full condition supplies these errors and render diagnostics for a replacement plan.
@@ -103,6 +105,12 @@ storyboard; candidate history; render observations; alignment checks; selected a
 call/token counts and latency. Actions are generate/revise storyboard and invoke
 compile/render/check through a tightly controlled loop. The agent cannot alter the
 theorem, add axioms, rewrite the trace, or certify its own narration.
+
+The initial visual vocabulary is `introduce_facts`, `split_goal`, `select_fact`,
+`swap_objects`, `choose_witness`, `rewrite_expression`, and `show_subset`, plus a
+`proof_state` baseline. This makes actual graphical animation feasible while preventing
+the model from emitting arbitrary executable code. It is expressive only for the
+initial elementary domains; arbitrary metaphor discovery remains out of scope.
 
 The MVP uses the storyboard as its plan, not an extra marketing planner agent. Trace
 extraction is a prerequisite, not repeated proof search. Flat tactic commands can
@@ -323,8 +331,9 @@ LLM judges and their calibration limitations.
 5. September 13: verify citations, limits, anonymity, disclosures, artifacts and counts;
    submit before AoE. Never trade correctness for the target date.
 
-Current completion: research branch, schema, extraction adapter scaffold, compiler,
-bounded loop, paired runner, four draft seeds, eleven passing unit tests, and this plan.
+Current completion: research branch, schema, extraction adapter scaffold, controlled
+conceptual visual compiler, animated offline browser preview, bounded loop, paired
+runner, four draft seeds, thirteen passing unit tests, and this plan.
 Blocked/unvalidated: actual Lean extraction, Docker render, live model generation,
 benchmark expansion/admission, semantic audit, and experimental results. The wider
 old harness tests could not run in this session because openai/dotenv are missing.
