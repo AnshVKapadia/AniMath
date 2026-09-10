@@ -19,6 +19,9 @@ was blocked. Existing provider dependencies also need installation in a run envi
 
 ```bash
 python -m unittest research.tests.test_lean_agent -v
+# Offline fixture preview: demonstrates the current data flow, not Lean/LLM/Manim.
+python -m research.lean_agent.demo --out research/runs/fixture-demo
+# Open research/runs/fixture-demo/index.html in a browser.
 python -m research.lean_agent.cli schema --out research/runs/lean-schema
 # Install/select Lean 4.19.0 through your normal approved setup first.
 # Inspect every task: Lean is executable code. This adapter is NOT a sandbox.
