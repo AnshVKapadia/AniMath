@@ -3,6 +3,10 @@
 This is the active pivot. The original calculus harness and product are preserved.
 See [the complete revised research plan](../docs/LEAN_RESEARCH_PLAN.md).
 
+For single-proof generation, feedback, revision history, and export, use the
+[iterative workbench](WORKBENCH.md). It includes a setup doctor and automatically
+creates unique project folders. The commands below remain the batch experiment/demo interface.
+
 ## Status
 
 Implemented: typed task/storyboard/trace contracts; seven constrained conceptual

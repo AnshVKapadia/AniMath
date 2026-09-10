@@ -17,7 +17,7 @@ from .core import (Beat, ProofTask, Snapshot, Storyboard, Trace, VisualSpec,
 
 def fixture():
     tasks = [ProofTask.model_validate_json(line) for line in
-             Path('research/lean_agent/seeds.jsonl').read_text(encoding='utf-8').splitlines()
+             Path(__file__).with_name('seeds.jsonl').read_text(encoding='utf-8').splitlines()
              if line.strip()]
     task = next(task for task in tasks if task.id == 'conjunction_commutes')
     source, _ = source_for(task)
@@ -53,8 +53,8 @@ def page(task, source, trace, board, checks):
     frames = []
     states = {state.id: state.goals for state in trace.snapshots}
     for index, beat in enumerate(board.beats, 1):
-        frames.append({'step': index, 'before': states[beat.before],
-                       'after': states[beat.after], 'narration': beat.narration,
+        frames.append({'step': index, 'before': states.get(beat.before, 'MISSING EVIDENCE'),
+                       'after': states.get(beat.after, 'MISSING EVIDENCE'), 'narration': beat.narration,
                        'kind': beat.visual.kind, 'labels': beat.visual.labels})
     data = json.dumps(frames).replace('</', '<\\/')
     return f'''<!doctype html>
@@ -82,14 +82,22 @@ body{{font:17px system-ui;background:#0c1222;color:#eef2ff;margin:0}}main{{max-w
 <p><button onclick="move(-1)">Previous</button><button onclick="move(1)">Next</button></p>
 <details><summary>Generated Lean source</summary><pre>{html.escape(source)}</pre></details>
 <script>const frames={data};let i=0;
+const stage=document.getElementById('stage');
+const title=document.getElementById('title');
+const before=document.getElementById('before');
+const after=document.getElementById('after');
+const narration=document.getElementById('narration');
 function tile(label,classes,x){{const e=document.createElement('div');e.className='tile '+classes;e.textContent=label;if(x)stage.appendChild(e);return e}}
 function renderVisual(f){{stage.replaceChildren();
  if(f.kind==='introduce_facts'){{const c=document.createElement('div');c.className='container';c.textContent='Known together';stage.append(c);tile(f.labels[0],'fact-a',1);tile(f.labels[1],'green fact-b',1)}}
  else if(f.kind==='split_goal'){{tile(f.labels.join(' AND '),'yellow combined',1);tile(f.labels[0],'part left',1);tile(f.labels[1],'green part right',1)}}
- else if(f.kind==='select_fact'){{tile('Known '+f.labels[0],'source',1);tile('Goal '+f.labels[0],'yellow target',1);tile(f.labels[0],'green token',1)}}
- else if(f.kind==='swap_objects'){{tile(f.labels[0],'source',1);tile(f.labels[1],'green target',1)}}
- else{{tile(f.labels.join(' → '),'combined',1)}}
- requestAnimationFrame(()=>requestAnimationFrame(()=>stage.classList.add('go')))}}
+ else if(f.kind==='select_fact'){{const a=tile(f.labels[0],'source',1);const b=tile('Goal '+f.labels[0],'yellow target',1);const t=tile(f.labels[0],'green source',1);t.animate([{{transform:'translateX(0)'}},{{transform:`translateX(${{b.offsetLeft-a.offsetLeft}}px)`}}],{{duration:1400,fill:'forwards'}})}}
+ else if(f.kind==='swap_objects'){{const a=tile(f.labels[0],'source',1);const b=tile(f.labels[1],'green target',1);const dx=b.offsetLeft-a.offsetLeft;a.animate([{{transform:'translate(0,0)'}},{{transform:`translate(${{dx/2}}px,-65px)`}},{{transform:`translate(${{dx}}px,0)`}}],{{duration:1500,fill:'forwards'}});b.animate([{{transform:'translate(0,0)'}},{{transform:`translate(${{-dx/2}}px,65px)`}},{{transform:`translate(${{-dx}}px,0)`}}],{{duration:1500,fill:'forwards'}})}}
+ else if(f.kind==='choose_witness'){{const t=tile('Need an example','yellow target',1);const w=tile(f.labels[0],'green source',1);w.animate([{{transform:'translateX(0)'}},{{transform:`translateX(${{t.offsetLeft-w.offsetLeft}}px)`}}],{{duration:1400,fill:'forwards'}})}}
+ else if(f.kind==='rewrite_expression'){{const a=tile(f.labels[0],'source',1);const b=tile(f.labels[1],'green target',1);a.animate([{{opacity:1}},{{opacity:.2}}],{{duration:1500,fill:'forwards'}});b.animate([{{opacity:0,transform:'translateX(-50px)'}},{{opacity:1,transform:'translateX(0)'}}],{{duration:1500,fill:'forwards'}})}}
+ else if(f.kind==='show_subset'){{const outer=document.createElement('div');outer.className='container';outer.style.borderRadius='50%';outer.textContent=f.labels[1];stage.appendChild(outer);const inner=tile(f.labels[0],'green',1);inner.style.left='calc(50% - 55px)';inner.style.top='46%';inner.style.borderRadius='50%';inner.animate([{{opacity:0,transform:'scale(.1)'}},{{opacity:1,transform:'scale(1)'}}],{{duration:1200,fill:'forwards'}})}}
+ else{{const p=document.createElement('pre');p.textContent=f.after;stage.appendChild(p)}}
+ if(['introduce_facts','split_goal'].includes(f.kind))requestAnimationFrame(()=>requestAnimationFrame(()=>stage.classList.add('go')))}}
 function show(){{const f=frames[i];stage.classList.remove('go');title.textContent=`Step ${{f.step}} of ${{frames.length}}`;before.textContent=f.before;after.textContent=f.after;narration.textContent=f.narration;renderVisual(f)}}
 function move(d){{i=(i+d+frames.length)%frames.length;show()}}show();</script>
 </main></body></html>'''
