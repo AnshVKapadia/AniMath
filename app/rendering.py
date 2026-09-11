@@ -36,6 +36,10 @@ class RenderPipelineError(Exception):
         self.details = details
 
 
+class RenderInfrastructureError(RenderPipelineError):
+    """Raised when the configured rendering service cannot accept work."""
+
+
 @dataclass
 class RenderResult:
     job_id: str
@@ -94,6 +98,17 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
             video_path=video_path,
             initial_video_path=video_path,
             final_video_path=video_path,
+        )
+
+    if _is_infrastructure_failure(details):
+        raise RenderInfrastructureError(
+            "Video rendering is temporarily unavailable because Vercel Sandbox "
+            "access is unavailable for this project.",
+            job_id=job_id,
+            details=(
+                "Vercel Sandbox returned 402 Payment Required. The generated scene "
+                "was not retried because changing its code cannot fix account capacity."
+            ),
         )
 
     if controlled:
@@ -202,6 +217,14 @@ def _needs_preemptive_repair(code: str) -> bool:
 def _needs_layout_repair(code: str) -> bool:
     text_heavy_signals = sum(code.count(token) for token in ("MathTex(", "Tex(", "Text("))
     return any(snippet in code for snippet in LAYOUT_RISK_SNIPPETS) or text_heavy_signals >= 4
+
+
+def _is_infrastructure_failure(details: str) -> bool:
+    normalized = details.lower()
+    return (
+        "402 payment required" in normalized
+        or "vercel_sandbox_snapshot_id is not configured" in normalized
+    )
 
 
 def _render_scene(

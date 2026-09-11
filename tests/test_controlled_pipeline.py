@@ -104,6 +104,36 @@ class ControlledPipelineTests(unittest.TestCase):
             "Help visualize the Navier-Stokes problem."
         )
 
+    def test_sandbox_capacity_failure_skips_code_repair(self) -> None:
+        root = Path("virtual-renders")
+        llm = Mock()
+        llm.generate_scene_plan.side_effect = UnsupportedVisualPlanError(
+            "equation layout cannot represent fluid flow"
+        )
+        llm.generate_code.return_value = FREEFORM_CODE
+
+        with (
+            patch.object(rendering, "RENDERS_DIR", root),
+            patch.object(rendering, "LLMClient", return_value=llm),
+            patch.object(
+                rendering,
+                "_render_scene",
+                return_value=(
+                    False,
+                    "Vercel Sandbox error: 402 Payment Required",
+                    None,
+                ),
+            ),
+            patch.object(Path, "mkdir"),
+            patch.object(Path, "write_text"),
+            self.assertRaises(rendering.RenderInfrastructureError),
+        ):
+            rendering.run_generation_pipeline(
+                "capacity-job", "Help visualize the Navier-Stokes problem."
+            )
+
+        llm.repair_code.assert_not_called()
+
     def test_failed_controlled_render_uses_freeform_fallback(self) -> None:
         root = Path("virtual-renders")
         video = root / "video" / "GeneratedScene.mp4"

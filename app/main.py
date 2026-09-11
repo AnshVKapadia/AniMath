@@ -12,7 +12,11 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from app.config import IS_VERCEL, RENDERS_DIR, STATIC_DIR, get_settings
-from app.rendering import RenderPipelineError, run_generation_pipeline
+from app.rendering import (
+    RenderInfrastructureError,
+    RenderPipelineError,
+    run_generation_pipeline,
+)
 from app.schemas import GenerateErrorResponse, GenerateRequest, GenerateResponse
 
 
@@ -54,6 +58,15 @@ async def generate_animation(payload: GenerateRequest) -> GenerateResponse:
         result = run_generation_pipeline(job_id=job_id, teacher_prompt=prompt)
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RenderInfrastructureError as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "jobId": exc.job_id,
+                "error": str(exc),
+                "details": exc.details,
+            },
+        )
     except RenderPipelineError as exc:
         return JSONResponse(
             status_code=500,

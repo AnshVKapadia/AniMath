@@ -29,10 +29,12 @@ class SandboxRenderingTests(unittest.TestCase):
             stderr="",
         )
         sandbox = MagicMock()
+        sandbox.current_snapshot_id = "snap_child"
         sandbox.run_process.side_effect = [docker_ready, rendered, found]
         sandbox.fs.read_bytes.return_value = b"video-bytes"
         operation = MagicMock()
         operation.__enter__.return_value = sandbox
+        derived_snapshot = MagicMock()
 
         with (
             patch.dict(
@@ -44,7 +46,12 @@ class SandboxRenderingTests(unittest.TestCase):
                 sandbox_rendering.sandbox_sync,
                 "create_sandbox",
                 return_value=operation,
-            ),
+            ) as create_sandbox,
+            patch.object(
+                sandbox_rendering.sandbox_sync,
+                "get_snapshot",
+                return_value=derived_snapshot,
+            ) as get_snapshot,
             patch.object(Path, "read_text", return_value="from manim import *\n"),
             patch.object(Path, "mkdir"),
             patch.object(Path, "write_bytes") as write_bytes,
@@ -59,6 +66,17 @@ class SandboxRenderingTests(unittest.TestCase):
         write_bytes.assert_called_once_with(b"video-bytes")
         sandbox.create_process.assert_called_once()
         sandbox.fs.write_text.assert_called_once()
+        self.assertEqual(create_sandbox.call_args.kwargs["snapshot_expiration"], 86_400)
+        get_snapshot.assert_called_once_with(snapshot_id="snap_child")
+        derived_snapshot.delete.assert_called_once_with()
+
+    def test_base_snapshot_is_never_deleted(self) -> None:
+        with patch.object(sandbox_rendering.sandbox_sync, "get_snapshot") as get_snapshot:
+            sandbox_rendering._delete_derived_snapshot(
+                "snap_base", base_snapshot_id="snap_base"
+            )
+
+        get_snapshot.assert_not_called()
 
 
 if __name__ == "__main__":

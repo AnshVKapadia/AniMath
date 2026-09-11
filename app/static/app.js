@@ -63,7 +63,7 @@ form.addEventListener("submit", async (event) => {
 
   const prompt = promptInput.value.trim();
   if (!prompt) {
-    showError("Enter a calculus visualization request before generating.");
+    showError("Enter a math or physics visualization request before generating.");
     return;
   }
 
@@ -81,7 +81,9 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) {
       const detail = payload.detail;
       const message =
-        typeof detail === "string"
+        typeof payload.error === "string"
+          ? `${payload.error}${payload.details ? `\n\n${payload.details}` : ""}`
+          : typeof detail === "string"
           ? detail
           : detail?.error
             ? `${detail.error}\n\n${detail.details || ""}`

@@ -20,13 +20,16 @@ def render_scene_in_sandbox(
     if not snapshot_id:
         return False, "VERCEL_SANDBOX_SNAPSHOT_ID is not configured.", None
 
+    derived_snapshot_id: str | None = None
     try:
         with sandbox_sync.create_sandbox(
             source=SnapshotSource(snapshot_id=snapshot_id),
             execution_time_limit=240,
             resources=SandboxResources(vcpus=2),
             network_policy=NetworkPolicy("deny-all", {}),
+            snapshot_expiration=86_400,
         ) as sandbox:
+            derived_snapshot_id = sandbox.current_snapshot_id
             sandbox.fs.mkdir(REMOTE_JOB_DIR)
             remote_scene = REMOTE_JOB_DIR / "scene.py"
             remote_media = REMOTE_JOB_DIR / "media"
@@ -77,11 +80,27 @@ def render_scene_in_sandbox(
             video_bytes = sandbox.fs.read_bytes(remote_video)
     except Exception as exc:
         return False, f"Vercel Sandbox error: {exc}", None
+    finally:
+        _delete_derived_snapshot(derived_snapshot_id, base_snapshot_id=snapshot_id)
 
     media_dir.mkdir(parents=True, exist_ok=True)
     video_path = media_dir / "GeneratedScene.mp4"
     video_path.write_bytes(video_bytes)
     return True, details, video_path
+
+
+def _delete_derived_snapshot(
+    derived_snapshot_id: str | None,
+    *,
+    base_snapshot_id: str,
+) -> None:
+    if not derived_snapshot_id or derived_snapshot_id == base_snapshot_id:
+        return
+    try:
+        sandbox_sync.get_snapshot(snapshot_id=derived_snapshot_id).delete()
+    except Exception:
+        # Snapshot cleanup must not discard an otherwise successful render.
+        pass
 
 
 def _wait_for_docker(sandbox: object) -> str | None:
