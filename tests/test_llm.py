@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock
 
-from app.llm import LLMClient, _validate_teaching_depth
+from app.llm import LLMClient, UnsupportedVisualPlanError, _validate_teaching_depth
 from app.scene_compiler import compile_scene
 from app.scene_plan import ScenePlan
 
@@ -27,7 +27,46 @@ def shallow_formal_plan() -> ScenePlan:
     )
 
 
+def equation_plan() -> ScenePlan:
+    return ScenePlan.model_validate(
+        {
+            "title": "Navier-Stokes",
+            "visual_kind": "equation",
+            "function_expression": None,
+            "beats": [
+                {
+                    "formula": r"\\partial_t u + (u\\cdot\\nabla)u = -\\nabla p + \\nu\\nabla^2u",
+                    "explanation": "Introduce the equation.",
+                    "action": "show_formula",
+                },
+                {
+                    "formula": r"\\nabla\\cdot u=0",
+                    "explanation": "State incompressibility.",
+                    "action": "show_formula",
+                },
+            ],
+        }
+    )
+
+
 class TeachingDepthTests(unittest.TestCase):
+    def test_explicit_visual_request_rejects_equation_only_plan(self) -> None:
+        with self.assertRaises(UnsupportedVisualPlanError):
+            _validate_teaching_depth(
+                "Help visualize the Navier-Stokes problem.",
+                equation_plan(),
+            )
+
+    def test_unsupported_visual_plan_skips_structured_retry(self) -> None:
+        plan = equation_plan()
+        client = LLMClient.__new__(LLMClient)
+        client._run = Mock(return_value=plan.model_dump_json())
+
+        with self.assertRaises(UnsupportedVisualPlanError):
+            client.generate_scene_plan("Draw a visualization of fluid flow.")
+
+        self.assertEqual(client._run.call_count, 1)
+
     def test_formal_definition_requires_eight_beats(self) -> None:
         with self.assertRaisesRegex(ValueError, "exactly 8 beats"):
             _validate_teaching_depth(
@@ -84,7 +123,7 @@ class TeachingDepthTests(unittest.TestCase):
         )
 
         plan = client.generate_scene_plan(
-            "Visualize a derivative.",
+            "Explain a derivative.",
             plan_validator=compile_scene,
         )
 

@@ -1,7 +1,7 @@
 # Ani-Math
 
-Ani-Math is a tutor-facing math animation tool, currently optimized for
-calculus explanations. A tutor enters a natural-language prompt, and the app
+Ani-Math is a tutor-facing math animation tool for visual math and physics
+explanations. A tutor enters a natural-language prompt, and the app
 plans, compiles, renders, previews, and downloads a short Manim video.
 
 Production: [https://ani-math.vercel.app](https://ani-math.vercel.app)
@@ -28,7 +28,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ## How generation works
 
-1. Foundry/OpenAI converts the tutor prompt into a constrained JSON scene plan.
+1. Foundry/OpenAI converts graph-compatible tutor prompts into a constrained JSON scene plan.
 2. Pydantic validates the plan, actions, axis ranges, and required parameters.
 3. Mathematical caret powers such as `x^2` are normalized to safe Python powers
    such as `x**2` before compilation.
@@ -38,8 +38,10 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
    the pipeline considers free-form generation.
 6. Manim renders locally during development or inside an isolated Vercel Sandbox
    in production.
-7. If a controlled render fails, the pipeline tries free-form generation and one
-   repair pass as a final fallback.
+7. Explicit visual requests that need diagrams, vector fields, flow, geometry, or
+   other unsupported primitives route to a visually focused free-form scene.
+8. If a render fails, the pipeline tries one repair pass while preserving the
+   concrete visual model.
 
 This keeps normal requests on a consistent, deterministic visual layout while
 retaining a fallback for concepts outside the controlled compiler.
@@ -203,3 +205,8 @@ Set `GEMINI_API_KEY` and optionally `GEMINI_MODEL`, which defaults to
   validation and correction fail
 - Inline production videos must remain below the configured response budget
 - Local Manim rendering requires its system-level dependencies
+
+## Future ideas
+
+- Add post-video refinement buttons such as **Make simpler**, **Elaborate**, and
+  **Make more visual**, using the current prompt and generated scene as context.

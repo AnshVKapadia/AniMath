@@ -8,7 +8,7 @@ from pathlib import Path
 from time import perf_counter
 
 from app.config import IS_VERCEL, RENDERS_DIR, get_settings
-from app.llm import LLMClient
+from app.llm import LLMClient, UnsupportedVisualPlanError
 from app.scene_compiler import compile_scene
 
 
@@ -66,7 +66,14 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
         _log(job_id, "plan", f"Controlled scene compiled in {_elapsed(plan_start)}")
         _log(job_id, "files", f"Saved structured plan to {plan_path}")
     except ValueError as exc:
-        _log(job_id, "fallback", f"Structured plan was not usable: {exc}")
+        if isinstance(exc, UnsupportedVisualPlanError):
+            _log(
+                job_id,
+                "visual",
+                f"Controlled layout cannot represent the requested visual model: {exc}",
+            )
+        else:
+            _log(job_id, "fallback", f"Structured plan was not usable: {exc}")
         code = _generate_freeform_code(llm, teacher_prompt, job_id)
 
     scene_path = job_dir / "scene.py"

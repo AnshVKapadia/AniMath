@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import app.rendering as rendering
+from app.llm import UnsupportedVisualPlanError
 from app.scene_plan import ScenePlan
 
 
@@ -77,6 +78,31 @@ class ControlledPipelineTests(unittest.TestCase):
         self.assertEqual(result.video_path, video)
         self.assertEqual(result.code, FREEFORM_CODE)
         llm.generate_code.assert_called_once()
+
+    def test_unsupported_visual_plan_uses_freeform_visual_generator(self) -> None:
+        root = Path("virtual-renders")
+        video = root / "video" / "GeneratedScene.mp4"
+        llm = Mock()
+        llm.generate_scene_plan.side_effect = UnsupportedVisualPlanError(
+            "equation layout cannot represent fluid flow"
+        )
+        llm.generate_code.return_value = FREEFORM_CODE
+
+        with (
+            patch.object(rendering, "RENDERS_DIR", root),
+            patch.object(rendering, "LLMClient", return_value=llm),
+            patch.object(rendering, "_render_scene", return_value=(True, "", video)),
+            patch.object(Path, "mkdir"),
+            patch.object(Path, "write_text"),
+        ):
+            result = rendering.run_generation_pipeline(
+                "visual-job", "Help visualize the Navier-Stokes problem."
+            )
+
+        self.assertEqual(result.code, FREEFORM_CODE)
+        llm.generate_code.assert_called_once_with(
+            "Help visualize the Navier-Stokes problem."
+        )
 
     def test_failed_controlled_render_uses_freeform_fallback(self) -> None:
         root = Path("virtual-renders")

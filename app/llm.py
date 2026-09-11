@@ -7,21 +7,29 @@ from typing import Callable
 from openai import OpenAI
 
 from app.config import get_settings
-from app.scene_plan import ScenePlan, VisualAction
+from app.scene_plan import ScenePlan, VisualAction, VisualKind
 
 
 SYSTEM_PROMPT = dedent(
     """
     You generate short, valid Manim Community Edition scenes for a tutor-facing
-    calculus visualization tool.
+    math and physics visualization tool.
 
     Hard requirements:
     - Return only Python code. No markdown fences. No explanations.
     - Use only `from manim import *`.
     - Define exactly one scene class named `GeneratedScene(Scene)`.
     - Keep the animation short and classroom-friendly, roughly 15 to 45 seconds.
-    - Focus on common calculus concepts: limits, derivatives, tangent lines,
-      integrals, Riemann sums, and simple series intuition.
+    - Teach through changing visual objects and spatial relationships. Equations
+      support the visual explanation; they must not be the whole explanation.
+    - When the request says visualize, visually, visualization, draw, drawing,
+      graphically, diagram, or animate, make the visual model the primary content.
+      Use a graph, grid, number line, geometric construction, arrows, vector field,
+      flow lines, moving particles, changing areas, or another faithful model.
+    - For advanced concepts, show an honest simplified model rather than merely
+      labeling the terms of an equation. For fluid or PDE topics, prefer a
+      deterministic field or flow illustration with arrows or particles that
+      visibly demonstrates the roles of the terms.
     - Prioritize mathematical correctness and valid Manim syntax.
     - Use readable labels, simple color choices, and uncluttered layouts.
     - Avoid external files, images, network calls, random data, or unsupported libraries.
@@ -32,8 +40,9 @@ SYSTEM_PROMPT = dedent(
     - Ensure the scene can render on a default Manim installation.
 
     Implementation guidance:
-    - Prefer Axes, NumberPlane, MathTex, Tex, ValueTracker, Dot, Line, Brace,
-      Rectangle, and simple transforms/fades.
+    - Prefer Axes, NumberPlane, MathTex, Tex, ValueTracker, Dot, Line, Arrow,
+      ArrowVectorField, StreamLines, Brace, Rectangle, VMobject, and simple
+      transforms/fades.
     - Use default MathTex or simple Text/Tex only. Never construct or modify TexTemplate.
     - Use clear pacing and a compact construct() method.
     - If text rendering could be fragile, prefer MathTex for formulas and minimal Tex usage.
@@ -52,6 +61,8 @@ REPAIR_PROMPT = dedent(
     - only `from manim import *`
     - no markdown or commentary
     - no TexTemplate usage or LaTeX template customization
+    - preserve the concrete visual model and motion; do not replace it with an
+      equation-only explanation
     """
 ).strip()
 
@@ -125,6 +136,12 @@ SCENE_PLANNER_PROMPT = dedent(
     - show_riemann requires interval_start, interval_end, and dx.
     - Keep action values inside the axis ranges.
     - Prefer an equation plan when the concept does not need a coordinate graph.
+    - If the request explicitly asks to visualize, draw, diagram, animate, or show
+      something graphically, do not return an equation-only lecture when a faithful
+      graph is possible. Use at least two spatial actions in a graph plan.
+    - Do not force a general diagram, vector field, physical system, or geometry
+      concept into an unrelated scalar function graph. Return the best equation
+      plan instead; the application will route it to a richer visual generator.
     - Never put prose in formula and never put LaTeX commands in explanation.
     """
 ).strip()
@@ -192,6 +209,8 @@ class LLMClient:
                 return plan
             except ValueError as exc:
                 last_error = exc
+                if isinstance(exc, UnsupportedVisualPlanError):
+                    break
                 if attempt == 1:
                     break
                 prompt = dedent(
@@ -267,6 +286,36 @@ def _json_object_text(value: str) -> str:
 
 def _validate_teaching_depth(teacher_prompt: str, plan: ScenePlan) -> None:
     normalized_prompt = teacher_prompt.lower()
+    visual_intent_signals = (
+        "visualize",
+        "visualise",
+        "visualization",
+        "visualisation",
+        "visually",
+        "graphically",
+        "draw",
+        "drawing",
+        "diagram",
+        "animate",
+        "animation",
+    )
+    has_visual_intent = any(signal in normalized_prompt for signal in visual_intent_signals)
+    if has_visual_intent and plan.visual_kind == VisualKind.EQUATION:
+        raise UnsupportedVisualPlanError(
+            "The request explicitly requires a visual model that the controlled "
+            "equation layout cannot represent."
+        )
+    if has_visual_intent:
+        spatial_beats = [
+            beat
+            for beat in plan.beats
+            if beat.action not in {VisualAction.SHOW_FORMULA, VisualAction.SHOW_GRAPH}
+        ]
+        if len(spatial_beats) < 2:
+            raise ValueError(
+                "Explicit visualization requests require at least two spatial actions "
+                "beyond displaying the base graph."
+            )
     formal_definition = (
         "formal definition" in normalized_prompt
         or "definition of a derivative" in normalized_prompt
@@ -286,3 +335,7 @@ def _validate_teaching_depth(teacher_prompt: str, plan: ScenePlan) -> None:
             raise ValueError(
                 "A secant-to-tangent explanation requires a slide_secant beat with visible motion."
             )
+
+
+class UnsupportedVisualPlanError(ValueError):
+    """Raised when an explicit visual request needs the free-form renderer."""
