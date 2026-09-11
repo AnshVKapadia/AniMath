@@ -20,16 +20,18 @@ def render_scene_in_sandbox(
     if not snapshot_id:
         return False, "VERCEL_SANDBOX_SNAPSHOT_ID is not configured.", None
 
-    derived_snapshot_id: str | None = None
+    sandbox_session_id: str | None = None
+    sandbox_project_id: str | None = None
     try:
         with sandbox_sync.create_sandbox(
             source=SnapshotSource(snapshot_id=snapshot_id),
             execution_time_limit=240,
-            resources=SandboxResources(vcpus=2),
+            resources=SandboxResources(vcpus=4),
             network_policy=NetworkPolicy("deny-all", {}),
             snapshot_expiration=86_400,
         ) as sandbox:
-            derived_snapshot_id = sandbox.current_snapshot_id
+            sandbox_session_id = sandbox.current_session_id
+            sandbox_project_id = sandbox.project_id
             sandbox.fs.mkdir(REMOTE_JOB_DIR)
             remote_scene = REMOTE_JOB_DIR / "scene.py"
             remote_media = REMOTE_JOB_DIR / "media"
@@ -81,7 +83,11 @@ def render_scene_in_sandbox(
     except Exception as exc:
         return False, f"Vercel Sandbox error: {exc}", None
     finally:
-        _delete_derived_snapshot(derived_snapshot_id, base_snapshot_id=snapshot_id)
+        _delete_session_snapshots(
+            sandbox_session_id,
+            project_id=sandbox_project_id,
+            base_snapshot_id=snapshot_id,
+        )
 
     media_dir.mkdir(parents=True, exist_ok=True)
     video_path = media_dir / "GeneratedScene.mp4"
@@ -89,15 +95,23 @@ def render_scene_in_sandbox(
     return True, details, video_path
 
 
-def _delete_derived_snapshot(
-    derived_snapshot_id: str | None,
+def _delete_session_snapshots(
+    session_id: str | None,
     *,
+    project_id: str | None,
     base_snapshot_id: str,
 ) -> None:
-    if not derived_snapshot_id or derived_snapshot_id == base_snapshot_id:
+    if not session_id:
         return
     try:
-        sandbox_sync.get_snapshot(snapshot_id=derived_snapshot_id).delete()
+        snapshots = sandbox_sync.query_snapshots(
+            project_id=project_id,
+            page_size=20,
+            sort_order="desc",
+        )
+        for snapshot in snapshots:
+            if snapshot.source_session_id == session_id and snapshot.id != base_snapshot_id:
+                snapshot.delete()
     except Exception:
         # Snapshot cleanup must not discard an otherwise successful render.
         pass

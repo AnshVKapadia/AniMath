@@ -29,12 +29,16 @@ class SandboxRenderingTests(unittest.TestCase):
             stderr="",
         )
         sandbox = MagicMock()
-        sandbox.current_snapshot_id = "snap_child"
+        sandbox.current_session_id = "sbx_render"
+        sandbox.project_id = "prj_test"
         sandbox.run_process.side_effect = [docker_ready, rendered, found]
         sandbox.fs.read_bytes.return_value = b"video-bytes"
         operation = MagicMock()
         operation.__enter__.return_value = sandbox
-        derived_snapshot = MagicMock()
+        derived_snapshot = MagicMock(
+            id="snap_child",
+            source_session_id="sbx_render",
+        )
 
         with (
             patch.dict(
@@ -49,9 +53,9 @@ class SandboxRenderingTests(unittest.TestCase):
             ) as create_sandbox,
             patch.object(
                 sandbox_rendering.sandbox_sync,
-                "get_snapshot",
-                return_value=derived_snapshot,
-            ) as get_snapshot,
+                "query_snapshots",
+                return_value=iter([derived_snapshot]),
+            ) as query_snapshots,
             patch.object(Path, "read_text", return_value="from manim import *\n"),
             patch.object(Path, "mkdir"),
             patch.object(Path, "write_bytes") as write_bytes,
@@ -67,16 +71,31 @@ class SandboxRenderingTests(unittest.TestCase):
         sandbox.create_process.assert_called_once()
         sandbox.fs.write_text.assert_called_once()
         self.assertEqual(create_sandbox.call_args.kwargs["snapshot_expiration"], 86_400)
-        get_snapshot.assert_called_once_with(snapshot_id="snap_child")
+        self.assertEqual(create_sandbox.call_args.kwargs["resources"].vcpus, 4)
+        query_snapshots.assert_called_once_with(
+            project_id="prj_test",
+            page_size=20,
+            sort_order="desc",
+        )
         derived_snapshot.delete.assert_called_once_with()
 
     def test_base_snapshot_is_never_deleted(self) -> None:
-        with patch.object(sandbox_rendering.sandbox_sync, "get_snapshot") as get_snapshot:
-            sandbox_rendering._delete_derived_snapshot(
-                "snap_base", base_snapshot_id="snap_base"
+        base_snapshot = MagicMock(
+            id="snap_base",
+            source_session_id="sbx_render",
+        )
+        with patch.object(
+            sandbox_rendering.sandbox_sync,
+            "query_snapshots",
+            return_value=iter([base_snapshot]),
+        ):
+            sandbox_rendering._delete_session_snapshots(
+                "sbx_render",
+                project_id="prj_test",
+                base_snapshot_id="snap_base",
             )
 
-        get_snapshot.assert_not_called()
+        base_snapshot.delete.assert_not_called()
 
 
 if __name__ == "__main__":

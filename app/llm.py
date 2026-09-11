@@ -19,7 +19,8 @@ SYSTEM_PROMPT = dedent(
     - Return only Python code. No markdown fences. No explanations.
     - Use only `from manim import *`.
     - Define exactly one scene class named `GeneratedScene(Scene)`.
-    - Keep the animation short and classroom-friendly, roughly 15 to 45 seconds.
+    - Keep the animation short and classroom-friendly, roughly 15 to 30 seconds.
+      Use at most 10 self.play calls and keep total animation run time under 25 seconds.
     - Teach through changing visual objects and spatial relationships. Equations
       support the visual explanation; they must not be the whole explanation.
     - When the request says visualize, visually, visualization, draw, drawing,
