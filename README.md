@@ -1,10 +1,10 @@
-# MathimateLM
+# Ani-Math
 
-MathimateLM is a tutor-facing math animation tool, currently optimized for
+Ani-Math is a tutor-facing math animation tool, currently optimized for
 calculus explanations. A tutor enters a natural-language prompt, and the app
 plans, compiles, renders, previews, and downloads a short Manim video.
 
-Production: [https://mathimatelm.vercel.app](https://mathimatelm.vercel.app)
+Production: [https://ani-math.vercel.app](https://ani-math.vercel.app)
 
 ## Run locally
 
@@ -71,7 +71,7 @@ Direct OpenAI fallback:
 
 Application settings:
 
-- `APP_NAME`, default `MathimateLM`
+- `APP_NAME`, default `Ani-Math`
 - `MAX_PROMPT_LENGTH`, default `600`
 - `MANIM_QUALITY_FLAG`, default `-ql`; accepted values are `-ql`, `-qm`, and `-qh`
 - `VERCEL_INLINE_VIDEO_MAX_BYTES`, default `2750000`
@@ -96,8 +96,8 @@ production rendering happens in the Sandbox runtime instead.
 
 ## Vercel deployment
 
-- Vercel project: `mathimatelm`
-- Production URL: [https://mathimatelm.vercel.app](https://mathimatelm.vercel.app)
+- Vercel project: `ani-math`
+- Production URL: [https://ani-math.vercel.app](https://ani-math.vercel.app)
 - Production branch: `master`
 - FastAPI entrypoint: `index.py`
 - Function timeout: 300 seconds, configured in `vercel.json`
@@ -158,7 +158,7 @@ Failure response after the final repair attempt:
 - `app/scene_compiler.py`: safe expression compiler and controlled layouts
 - `app/rendering.py`: planning, compilation, fallback, repair, and render orchestration
 - `app/sandbox_rendering.py`: Vercel Sandbox lifecycle and MP4 retrieval
-- `app/static/`: one-page MathimateLM interface
+- `app/static/`: one-page Ani-Math interface
 - `tests/`: planner, compiler, pipeline, Sandbox, and Vercel response tests
 
 ## Tests

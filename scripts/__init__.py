@@ -1,1 +1,1 @@
-"""Developer utilities for MathimateLM."""
+"""Developer utilities for Ani-Math."""
