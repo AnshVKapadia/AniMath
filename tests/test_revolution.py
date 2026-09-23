@@ -41,8 +41,7 @@ class RevolutionTests(unittest.TestCase):
         self.assertIn("GeneratedScene(ThreeDScene)",code)
         self.assertIn("INNER_IS_ZERO = False",code)
         self.assertIn("validate_fixed_layout", code)
-        self.assertIn("OUTER_TEX", code)
-        self.assertIn(r"\sqrt{x}", code)
+        self.assertIn(r"R(x)=\sqrt{x}", code)
         self.assertNotIn('Text("Outer radius: sqrt(x)', code)
         p.inner_radius="0"
         self.assertIn("INNER_IS_ZERO = True",compile_revolution(p))
@@ -52,41 +51,6 @@ class RevolutionTests(unittest.TestCase):
         data["axis"]="y"
         with self.assertRaises(ValidationError):
             RevolutionPlan(**data)
-
-    def test_general_radius_functions_and_bounds_compile(self):
-        plan = RevolutionPlan(
-            supported=True,
-            outer_radius="1 + x/2",
-            inner_radius="x/4",
-            axis="x",
-            interval=(0, 2),
-        )
-
-        code = compile_revolution(plan)
-
-        self.assertIn("OUTER_EXPRESSION = '1 + x / 2'", code)
-        self.assertIn("INNER_EXPRESSION = 'x / 4'", code)
-        self.assertIn("X_END = 2.0", code)
-        self.assertIn(r"R(x)=", code)
-        compile(code, "scene", "exec")
-
-    def test_crossing_or_unsafe_radii_are_rejected(self):
-        with self.assertRaisesRegex(ValueError, "outer radius"):
-            RevolutionPlan(
-                supported=True,
-                outer_radius="x",
-                inner_radius="1",
-                axis="x",
-                interval=(0, 1),
-            )
-        with self.assertRaisesRegex(ValueError, "unsupported radius expression"):
-            RevolutionPlan(
-                supported=True,
-                outer_radius="__import__('os').system('nope')",
-                inner_radius="0",
-                axis="x",
-                interval=(0, 1),
-            )
 
     def test_unsupported_never_substitutes_example(self):
         p=self.plan()

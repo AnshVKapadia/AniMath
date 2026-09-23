@@ -1,11 +1,8 @@
 # Controlled 3D: first vertical slice
 
-The controlled family rotates a region between validated nonnegative radius
-functions about the x-axis. Expressions use the same restricted arithmetic and
-math-function grammar as graph scenes. Bounds must be finite and increasing;
-sampled geometric validation rejects negative, crossing, non-finite, or
-unreasonably large radii. This is still deliberately bounded capability, not
-general-purpose 3D support.
+The first supported family rotates the region between sqrt(x) and x (washers),
+or sqrt(x) and zero (disks), about the x-axis on [0,1]. This is deliberately
+a bounded capability, not general-purpose 3D support.
 
 Try: "Explain the washer method in 3D. Rotate the region between y=sqrt(x)
 and y=x, from x=0 to x=1, about the x-axis. Show the rotation, isolate a
@@ -16,8 +13,8 @@ has inner radius zero."
 `revolution_scene.py` compiles that specification into an actual ThreeDScene:
 planar region, camera transition, rotating region, surface sectors, annular
 cross-sections, a finite-thickness washer approximation, and the volume integral.
-Rendered meshes and the displayed numerical volume are finite-resolution
-approximations. Formula correctness is specific to x-axis solids of revolution.
+The disk variant uses pi/2; the washer variant uses pi/6. Rendered meshes are
+finite-resolution approximations. Formula correctness is specific to this family.
 All mathematical explanatory overlays use MathTex. Header and footer rails are
 camera-fixed, fitted to bounded regions, and checked for frame escape and mutual
 overlap before they are displayed.
@@ -32,7 +29,7 @@ Local verification:
     .venv\Scripts\python.exe -m unittest tests.test_revolution tests.test_controlled_pipeline
     .venv-render\Scripts\python.exe -m manim -ql app/revolution_scene.py GeneratedScene
 
-Next extensions should add independently tested families: rotation about the
-y-axis, shells, then vector geometry. Each needs
+Next extensions should add independently tested families: arbitrary validated
+radius functions/bounds, rotation about y, then vector geometry. Each needs
 geometric invariants, bounded mesh/render budgets, and rendered visual checks.
 Production sandbox performance must be checked independently of local rendering.
