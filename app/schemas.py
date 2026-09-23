@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class GenerateRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=600)
+    prompt: str = Field(..., min_length=1, max_length=1800)
 
 
 class GenerateResponse(BaseModel):

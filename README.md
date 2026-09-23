@@ -33,7 +33,9 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 3. Mathematical caret powers such as `x^2` are normalized to safe Python powers
    such as `x**2` before compilation.
 4. The controlled compiler validates function syntax and generates frame-safe
-   Manim code with fixed title, visual, and explanation regions.
+   Manim code with fixed title, visual, and explanation regions. Riemann scenes
+   carry an explicit left, right, or center sample type so the explanation and
+   rectangle geometry use the same convention.
 5. A compiler-rejected plan receives one structured correction attempt before
    the pipeline considers free-form generation.
 6. Manim renders locally during development or inside an isolated Vercel Sandbox
@@ -74,7 +76,7 @@ Direct OpenAI fallback:
 Application settings:
 
 - `APP_NAME`, default `Ani-Math`
-- `MAX_PROMPT_LENGTH`, default `600`
+- `MAX_PROMPT_LENGTH`, default `1800`
 - `MANIM_QUALITY_FLAG`, default `-ql`; accepted values are `-ql`, `-qm`, and `-qh`
 - `VERCEL_INLINE_VIDEO_MAX_BYTES`, default `2750000`
 
