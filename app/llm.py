@@ -97,7 +97,6 @@ SCENE_PLANNER_PROMPT = dedent(
           "interval_start": number or null,
           "interval_end": number or null,
           "dx": positive number or null,
-          "sample_type": "left", "right", or "center" for show_riemann; otherwise null,
           "point_label": "optional short LaTeX point label" or null,
           "second_point_label": "optional short LaTeX point label" or null
         }
@@ -135,9 +134,7 @@ SCENE_PLANNER_PROMPT = dedent(
     - show_point and show_tangent may use point_label for the highlighted point.
     - Keep point labels short; omit them when they do not add teaching value.
     - show_area requires interval_start and interval_end.
-    - show_riemann requires interval_start, interval_end, dx, and sample_type.
-      Set sample_type explicitly for every Riemann beat. Any endpoint wording in
-      the explanation must agree with sample_type.
+    - show_riemann requires interval_start, interval_end, and dx.
     - Keep action values inside the axis ranges.
     - Prefer an equation plan when the concept does not need a coordinate graph.
     - If the request explicitly asks to visualize, draw, diagram, animate, or show

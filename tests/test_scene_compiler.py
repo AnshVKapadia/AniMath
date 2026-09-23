@@ -60,34 +60,6 @@ def labeled_secant_plan() -> ScenePlan:
     )
 
 
-def riemann_plan(sample_type: str = "right") -> ScenePlan:
-    return ScenePlan.model_validate(
-        {
-            "title": "Riemann sums",
-            "visual_kind": "graph",
-            "function_expression": "x**2 + 1",
-            "x_range": [0, 3, 1],
-            "y_range": [0, 11, 1],
-            "beats": [
-                {
-                    "formula": "f(x)=x^2+1",
-                    "explanation": "Draw the curve.",
-                    "action": "show_graph",
-                },
-                {
-                    "formula": "S_3",
-                    "explanation": f"Use a {sample_type}-endpoint Riemann sum.",
-                    "action": "show_riemann",
-                    "interval_start": 0,
-                    "interval_end": 3,
-                    "dx": 1,
-                    "sample_type": sample_type,
-                },
-            ],
-        }
-    )
-
-
 class SceneCompilerTests(unittest.TestCase):
     def test_reserved_regions_do_not_overlap(self) -> None:
         self.assertEqual(validate_layout_regions(), ())
@@ -144,13 +116,6 @@ class SceneCompilerTests(unittest.TestCase):
         self.assertIn("animate.set_value(1.2)", compiled.code)
         self.assertIn("run_time=2.4 * PACE", compiled.code)
         self.assertIn("self.wait(3.0)", compiled.code)
-
-    def test_riemann_sample_type_is_passed_to_manim(self) -> None:
-        compiled = compile_scene(riemann_plan("right"))
-
-        self.assertIn("input_sample_type='right'", compiled.code)
-        self.assertIn("sample_x_values_1 = np.arange(0.0, 3.0, 1.0) + 1.0", compiled.code)
-        self.assertIn("Dot(axes.c2p(sample_x, function(sample_x))", compiled.code)
 
     def test_unsafe_expression_is_rejected(self) -> None:
         with self.assertRaises(SceneCompilationError):

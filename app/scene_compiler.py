@@ -465,27 +465,14 @@ validate_inside_visual(overlay_{index}, visual)
 self.play(FadeIn(overlay_{index}), run_time=0.55 * PACE)
 current_overlay = overlay_{index}'''
     if beat.action == VisualAction.SHOW_RIEMANN:
-        assert beat.sample_type is not None
-        sample_offset = {
-            "left": 0.0,
-            "right": beat.dx,
-            "center": 0.5 * beat.dx,
-        }[beat.sample_type.value]
-        return f'''riemann_rectangles_{index} = axes.get_riemann_rectangles(
+        return f'''overlay_{index} = axes.get_riemann_rectangles(
     graph,
     x_range=[{beat.interval_start!r}, {beat.interval_end!r}],
     dx={beat.dx!r},
-    input_sample_type={beat.sample_type.value!r},
     stroke_width=1,
     fill_opacity=0.45,
     color=[TEAL, BLUE],
 )
-sample_x_values_{index} = np.arange({beat.interval_start!r}, {beat.interval_end!r}, {beat.dx!r}) + {sample_offset!r}
-sample_dots_{index} = VGroup(*[
-    Dot(axes.c2p(sample_x, function(sample_x)), radius=0.055, color=YELLOW)
-    for sample_x in sample_x_values_{index}
-])
-overlay_{index} = VGroup(riemann_rectangles_{index}, sample_dots_{index})
 validate_inside_visual(overlay_{index}, visual)
 self.play(FadeIn(overlay_{index}), run_time=0.65 * PACE)
 current_overlay = overlay_{index}'''

@@ -10,7 +10,6 @@ from time import perf_counter
 from app.config import IS_VERCEL, RENDERS_DIR, get_settings
 from app.llm import LLMClient, UnsupportedVisualPlanError
 from app.scene_compiler import compile_scene
-from app.revolution import requests_revolution, plan_revolution, compile_revolution
 
 
 VIDEO_SUFFIX = "GeneratedScene.mp4"
@@ -57,21 +56,6 @@ def run_generation_pipeline(job_id: str, teacher_prompt: str) -> RenderResult:
     job_dir = RENDERS_DIR / job_id
     media_dir = job_dir / "media"
     job_dir.mkdir(parents=True, exist_ok=True)
-
-    if requests_revolution(teacher_prompt):
-        _log(job_id, "plan", "Planning controlled 3D solid of revolution")
-        plan = plan_revolution(llm, teacher_prompt)
-        code = compile_revolution(plan)
-        (job_dir / "revolution_plan.json").write_text(plan.model_dump_json(indent=2), encoding="utf-8")
-        scene_path = job_dir / "scene.py"
-        scene_path.write_text(code, encoding="utf-8")
-        success, details, video_path = _render_scene(scene_path, media_dir / "revolution", job_id)
-        if not success and _is_infrastructure_failure(details):
-            raise RenderInfrastructureError("The rendering service could not accept the 3D scene.", job_id=job_id, details=details)
-        if not success or not video_path:
-            raise RenderPipelineError("Controlled 3D rendering failed; no 2D substitute was generated.", job_id=job_id, details=details)
-        return RenderResult(job_id=job_id, code=code, repaired=False, video_path=video_path,
-                            initial_video_path=video_path, final_video_path=video_path)
 
     controlled = False
     _log(job_id, "plan", "Generating a structured scene plan")

@@ -27,64 +27,12 @@ class ScenePlanTests(unittest.TestCase):
                         "interval_start": 0,
                         "interval_end": 2,
                         "dx": 0.5,
-                        "sample_type": "left",
                     },
                 ],
             }
         )
 
         self.assertEqual(plan.function_expression, "x**2")
-
-    def test_riemann_requires_an_explicit_sample_type(self) -> None:
-        with self.assertRaisesRegex(ValueError, "show_riemann requires sample_type"):
-            ScenePlan.model_validate(
-                {
-                    "title": "Riemann sums",
-                    "visual_kind": "graph",
-                    "function_expression": "x**2",
-                    "beats": [
-                        {
-                            "formula": "f(x)=x^2",
-                            "explanation": "Draw the curve.",
-                            "action": "show_graph",
-                        },
-                        {
-                            "formula": "S_4",
-                            "explanation": "Draw four rectangles.",
-                            "action": "show_riemann",
-                            "interval_start": 0,
-                            "interval_end": 2,
-                            "dx": 0.5,
-                        },
-                    ],
-                }
-            )
-
-    def test_riemann_rejects_endpoint_wording_that_disagrees_with_sample_type(self) -> None:
-        with self.assertRaisesRegex(ValueError, "describes right sampling"):
-            ScenePlan.model_validate(
-                {
-                    "title": "Riemann sums",
-                    "visual_kind": "graph",
-                    "function_expression": "x**2",
-                    "beats": [
-                        {
-                            "formula": "f(x)=x^2",
-                            "explanation": "Draw the curve.",
-                            "action": "show_graph",
-                        },
-                        {
-                            "formula": "S_4",
-                            "explanation": "Use a right-endpoint Riemann sum.",
-                            "action": "show_riemann",
-                            "interval_start": 0,
-                            "interval_end": 2,
-                            "dx": 0.5,
-                            "sample_type": "left",
-                        },
-                    ],
-                }
-            )
 
     def test_graph_plan_accepts_controlled_actions(self) -> None:
         plan = ScenePlan.model_validate(

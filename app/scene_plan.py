@@ -21,12 +21,6 @@ class VisualAction(StrEnum):
     SHOW_FORMULA = "show_formula"
 
 
-class RiemannSampleType(StrEnum):
-    LEFT = "left"
-    RIGHT = "right"
-    CENTER = "center"
-
-
 class SceneBeat(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -39,15 +33,11 @@ class SceneBeat(BaseModel):
     interval_start: float | None = None
     interval_end: float | None = None
     dx: float | None = Field(default=None, gt=0)
-    sample_type: RiemannSampleType | None = None
     point_label: str | None = Field(default=None, min_length=1, max_length=56)
     second_point_label: str | None = Field(default=None, min_length=1, max_length=56)
 
     @model_validator(mode="after")
     def validate_action_parameters(self) -> "SceneBeat":
-        if self.sample_type is not None and self.action != VisualAction.SHOW_RIEMANN:
-            raise ValueError("sample_type can only be used with show_riemann")
-
         point_actions = {
             VisualAction.SHOW_POINT,
             VisualAction.SHOW_SECANT,
@@ -84,31 +74,7 @@ class SceneBeat(BaseModel):
                 raise ValueError("interval_start must be less than interval_end")
             if self.action == VisualAction.SHOW_RIEMANN and self.dx is None:
                 raise ValueError("show_riemann requires dx")
-            if self.action == VisualAction.SHOW_RIEMANN:
-                if self.sample_type is None:
-                    raise ValueError("show_riemann requires sample_type")
-                self._validate_riemann_endpoint_wording()
         return self
-
-    def _validate_riemann_endpoint_wording(self) -> None:
-        assert self.sample_type is not None
-        explanation = self.explanation.lower().replace("-", " ")
-        endpoint_aliases = {
-            RiemannSampleType.LEFT: ("left endpoint", "left riemann"),
-            RiemannSampleType.RIGHT: ("right endpoint", "right riemann"),
-            RiemannSampleType.CENTER: ("midpoint", "center endpoint", "centered riemann"),
-        }
-        mentioned = {
-            sample_type
-            for sample_type, aliases in endpoint_aliases.items()
-            if any(alias in explanation for alias in aliases)
-        }
-        if mentioned and mentioned != {self.sample_type}:
-            stated = ", ".join(sorted(sample_type.value for sample_type in mentioned))
-            raise ValueError(
-                f"Riemann explanation describes {stated} sampling but sample_type is "
-                f"{self.sample_type.value}"
-            )
 
 
 class ScenePlan(BaseModel):
