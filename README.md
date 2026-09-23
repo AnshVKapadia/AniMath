@@ -76,7 +76,6 @@ Direct OpenAI fallback:
 Application settings:
 
 - `APP_NAME`, default `Ani-Math`
-- `MAX_PROMPT_LENGTH`, default `1800`
 - `MANIM_QUALITY_FLAG`, default `-ql`; accepted values are `-ql`, `-qm`, and `-qh`
 - `VERCEL_INLINE_VIDEO_MAX_BYTES`, default `2750000`
 

@@ -39,12 +39,6 @@ async def generate_animation(payload: GenerateRequest) -> GenerateResponse:
     if not prompt:
         raise HTTPException(status_code=422, detail="Prompt cannot be empty.")
 
-    if len(prompt) > get_settings().max_prompt_length:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Prompt must be {get_settings().max_prompt_length} characters or fewer.",
-        )
-
     job_id = str(uuid4())
 
     try:

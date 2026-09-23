@@ -26,7 +26,6 @@ class Settings(BaseModel):
     azure_openai_base_url: str | None
     azure_openai_deployment: str | None
     app_name: str
-    max_prompt_length: int
     render_quality_flag: str
 
 
@@ -39,6 +38,5 @@ def get_settings() -> Settings:
         azure_openai_base_url=os.getenv("AZURE_OPENAI_BASE_URL"),
         azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
         app_name=os.getenv("APP_NAME", "Ani-Math"),
-        max_prompt_length=int(os.getenv("MAX_PROMPT_LENGTH", "1800")),
         render_quality_flag=os.getenv("MANIM_QUALITY_FLAG", "-ql"),
     )
