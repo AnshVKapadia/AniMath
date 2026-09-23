@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from app.scene_compiler import SceneCompilationError, compile_scene, validate_layout_regions
+from app.scene_compiler import (
+    SceneCompilationError,
+    _explanation_tex,
+    compile_scene,
+    validate_layout_regions,
+)
 from app.scene_plan import ScenePlan
 
 
@@ -96,6 +101,22 @@ class SceneCompilerTests(unittest.TestCase):
 
         self.assertIn("np.sin(x)", compiled.code)
         self.assertIn("np.exp(-x ** 2)", compiled.code)
+
+    def test_explanation_text_uses_latex_with_inline_math(self) -> None:
+        plan = graph_plan().model_copy(deep=True)
+        plan.beats[0].explanation = "Outer radius sqrt(x); compare x^2 and dx."
+
+        compiled = compile_scene(plan)
+
+        self.assertIn("Tex('Outer radius $\\\\sqrt{x}$;", compiled.code)
+        self.assertIn("$x^{2}$", compiled.code)
+        self.assertIn("$dx$", compiled.code)
+        self.assertNotIn("Text('Outer radius", compiled.code)
+
+    def test_explanation_tex_escapes_prose_symbols(self) -> None:
+        rendered = _explanation_tex("Rate is 50% & sqrt(x).")
+
+        self.assertEqual(rendered, r"Rate is 50\% \& $\sqrt{x}$.")
 
     def test_caret_power_notation_is_normalized_safely(self) -> None:
         plan = graph_plan("x^2")

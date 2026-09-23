@@ -288,7 +288,7 @@ self.wait(0.6 * PACE)'''
 
 def _render_graph_beat(plan: ScenePlan, beat: SceneBeat, index: int) -> str:
     formula = repr(beat.formula)
-    explanation = repr(_wrapped_text(beat.explanation))
+    explanation = repr(_explanation_tex(beat.explanation))
     action_code = _graph_action_code(plan, beat, index)
     reading_time = _reading_time(beat)
     clear_overlay = ""
@@ -299,7 +299,7 @@ def _render_graph_beat(plan: ScenePlan, beat: SceneBeat, index: int) -> str:
     return f'''# Beat {index + 1}
 formula_{index} = fit_to_box(MathTex({formula}), SIDEBAR_WIDTH, 1.35)
 explanation_{index} = fit_to_box(
-    Text({explanation}, font_size=23, line_spacing=0.9), SIDEBAR_WIDTH, 2.8
+    Tex({explanation}, font_size=23), SIDEBAR_WIDTH, 2.8
 )
 sidebar_{index} = VGroup(formula_{index}, explanation_{index}).arrange(DOWN, buff=0.45)
 fit_to_box(sidebar_{index}, SIDEBAR_WIDTH, SIDEBAR_HEIGHT)
@@ -483,13 +483,13 @@ def _render_equation_body(plan: ScenePlan) -> str:
     blocks: list[str] = []
     for index, beat in enumerate(plan.beats):
         formula = repr(beat.formula)
-        explanation = repr(_wrapped_text(beat.explanation))
+        explanation = repr(_explanation_tex(beat.explanation))
         reading_time = _reading_time(beat)
         blocks.append(
             f'''formula_{index} = fit_to_box(MathTex({formula}), VISUAL_WIDTH, VISUAL_HEIGHT)
 formula_{index}.move_to(VISUAL_CENTER)
 explanation_{index} = fit_to_box(
-    Text({explanation}, font_size=24, line_spacing=0.9), SIDEBAR_WIDTH, SIDEBAR_HEIGHT
+    Tex({explanation}, font_size=24), SIDEBAR_WIDTH, SIDEBAR_HEIGHT
 )
 explanation_{index}.move_to(SIDEBAR_CENTER)
 validate_layout(dict(title=title, visual=formula_{index}, sidebar=explanation_{index}))
@@ -515,6 +515,58 @@ self.wait(0.6 * PACE)'''
 
 def _wrapped_text(value: str) -> str:
     return "\n".join(textwrap.wrap(value, width=29, break_long_words=False, break_on_hyphens=False))
+
+
+_EXPLANATION_MATH = re.compile(
+    r"\$[^$]+\$|sqrt\([^()]+\)|\b[A-Za-z](?:\([A-Za-z]\))?\^[+-]?\d+(?:\.\d+)?\b|\b(?:dx|dy|dz|pi)\b"
+)
+
+
+def _explanation_tex(value: str) -> str:
+    """Render prose through LaTeX while preserving common inline mathematics."""
+    math_fragments: list[str] = []
+
+    def protect(match: re.Match[str]) -> str:
+        token = match.group(0)
+        if token.startswith("$"):
+            latex = token[1:-1]
+        else:
+            latex = _plain_math_to_latex(token)
+        marker = f"ANIMATHMATHTOKEN{len(math_fragments)}END"
+        math_fragments.append(latex)
+        return marker
+
+    protected = _EXPLANATION_MATH.sub(protect, _wrapped_text(value))
+    escaped = _escape_tex_text(protected).replace("\n", r"\\")
+    for index, fragment in enumerate(math_fragments):
+        escaped = escaped.replace(f"ANIMATHMATHTOKEN{index}END", f"${fragment}$")
+    return escaped
+
+
+def _plain_math_to_latex(value: str) -> str:
+    sqrt_match = re.fullmatch(r"sqrt\(([^()]+)\)", value)
+    if sqrt_match:
+        return rf"\sqrt{{{sqrt_match.group(1)}}}"
+    value = re.sub(r"\^([+-]?\d+(?:\.\d+)?)", r"^{\1}", value)
+    if value == "pi":
+        return r"\pi"
+    return value
+
+
+def _escape_tex_text(value: str) -> str:
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    return "".join(replacements.get(character, character) for character in value)
 
 
 def _reading_time(beat: SceneBeat) -> float:
