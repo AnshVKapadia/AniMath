@@ -4,19 +4,18 @@ AniMath turns a tutor's natural-language prompt into a short Manim animation. En
 
 [Try the live demo](https://ani-math.vercel.app/)
 
-![Riemann rectangles approximate the area under the graph of x squared](docs/examples/riemann.gif)
+![AniMath animation deriving the geometric-series formula](docs/examples/geometric-series.gif)
 
-| Example | Prompt to try |
-| --- | --- |
-| [Riemann sums](docs/examples/riemann.mp4) | Visualize Riemann rectangles for the area under f(x)=x^2 from x=0 to x=2, then show the definite integral. |
-| [Geometric series](docs/examples/geometric-series.mp4) | Explain algebraically why the geometric series 1 + r + r^2 + ... equals 1/(1-r) for absolute value of r less than 1. Use equation transformations rather than a graph. |
+[Watch the full animation](docs/examples/geometric-series.mp4)
+
+> Explain algebraically why the geometric series 1 + r + r^2 + ... equals 1/(1-r) for absolute value of r less than 1. Use equation transformations rather than a graph.
 
 ## How it works
 
 I built AniMath to make custom visual explanations easier to create during tutoring. The main engineering challenge was turning a flexible prompt into a scene whose math, narration, and layout agree.
 
 1. Foundry or OpenAI proposes a structured scene plan. Pydantic validates its actions and parameters.
-2. The compiler turns the plan into Manim code and controls the layout. A Riemann sum uses the same sample-point setting for its rectangles and written explanation.
+2. The compiler turns the plan into Manim code and controls the placement of equations, graphs, and explanations.
 3. Manim renders locally or in a temporary Vercel Sandbox. Requests outside the compiler's supported scenes can use a free-form fallback.
 
 Start with [the FastAPI route](app/main.py), [scene schema](app/scene_plan.py), or [compiler](app/scene_compiler.py).
