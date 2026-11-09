@@ -96,6 +96,16 @@ class SceneCompilerTests(unittest.TestCase):
         )
         self.assertNotIn("title = fit_to_box(Text(", compiled.code)
 
+    def test_mixed_math_title_without_condition_formats_prose(self) -> None:
+        plan = graph_plan().model_copy(
+            update={"title": r"Why 1+r+r^2+\cdots=\frac{1}{1-r}"}
+        )
+
+        self.assertIn(
+            r"MathTex('\\text{Why }1+r+r^2+\\cdots=\\frac{1}{1-r}'",
+            compile_scene(plan).code,
+        )
+
     def test_math_functions_are_translated_to_numpy(self) -> None:
         compiled = compile_scene(graph_plan("sin(x) + exp(-x**2)"))
 

@@ -245,10 +245,12 @@ def _title_latex(title: str) -> str:
         return rf"\text{{{escaped}}}"
 
     mixed_title = re.fullmatch(
-        r"(Why|How|When)\s+(.+?)\s+(for|when|where)\s+(.+)", value
+        r"(Why|How|When)\s+(.+?)(?:\s+(for|when|where)\s+(.+))?", value
     )
     if mixed_title:
         lead, formula, connector, condition = mixed_title.groups()
+        if connector is None:
+            return rf"\text{{{lead} }}{formula}"
         return rf"\text{{{lead} }}{formula}\text{{ {connector} }}{condition}"
     return value
 
