@@ -8,3 +8,11 @@ renders/*
 *.log
 .vercel
 .env*
+
+.env.*
+!.env.example
+/.venv-render/
+/media/
+/seminar/
+/tmp-disk-washer-review/
+/tmp-revolution-rails/

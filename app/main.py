@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import base64
+import logging
 import os
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
 
 from app.config import IS_VERCEL, RENDERS_DIR, STATIC_DIR, get_settings
 from app.rendering import (
@@ -20,7 +19,7 @@ from app.rendering import (
 from app.schemas import GenerateErrorResponse, GenerateRequest, GenerateResponse
 
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI(title=get_settings().app_name)
@@ -50,28 +49,27 @@ async def generate_animation(payload: GenerateRequest) -> GenerateResponse:
 
     try:
         result = run_generation_pipeline(job_id=job_id, teacher_prompt=prompt)
-    except ValueError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    except RenderInfrastructureError as exc:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "jobId": exc.job_id,
-                "error": str(exc),
-                "details": exc.details,
-            },
-        )
     except RenderPipelineError as exc:
+        unavailable = isinstance(exc, RenderInfrastructureError)
+        error = str(exc)
+        details = exc.details
+        if IS_VERCEL:
+            logger.warning("Render failed for job %s", job_id)
+            error = "Rendering is temporarily unavailable." if unavailable else "Animation rendering failed."
+            details = ""
         return JSONResponse(
-            status_code=500,
+            status_code=503 if unavailable else 500,
             content={
                 "jobId": exc.job_id,
-                "error": str(exc),
-                "details": exc.details,
+                "error": error,
+                "details": details,
             },
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        if IS_VERCEL:
+            logger.warning("Generation failed for job %s (%s)", job_id, type(exc).__name__)
+        detail = "Animation generation failed." if IS_VERCEL else str(exc)
+        raise HTTPException(status_code=500, detail=detail) from exc
 
     video_url = _video_url(result.video_path)
     if IS_VERCEL:

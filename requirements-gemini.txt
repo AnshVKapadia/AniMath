@@ -1,3 +1,0 @@
--r requirements-local.txt
-
-google-genai==1.31.0

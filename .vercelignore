@@ -6,3 +6,11 @@ scripts
 tests
 __pycache__
 *.log
+.env*
+.vercel
+.venv-render
+media
+seminar
+tmp-disk-washer-review
+tmp-revolution-rails
+docs/examples
