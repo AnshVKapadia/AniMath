@@ -4,9 +4,9 @@ AniMath turns a tutor's natural-language prompt into a short Manim animation. En
 
 [Try the live demo](https://ani-math.vercel.app/)
 
-![AniMath animation deriving the geometric-series formula](docs/examples/geometric-series.gif)
+![AniMath animation deriving the geometric-series formula](docs/examples/geometric-series-preview.gif)
 
-[Watch the full animation](docs/examples/geometric-series.mp4)
+[Watch the full animation](docs/examples/geometric-series-derivation.mp4)
 
 > Explain algebraically why the geometric series 1 + r + r^2 + ... equals 1/(1-r) for absolute value of r less than 1. Use equation transformations rather than a graph.
 
